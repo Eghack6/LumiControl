@@ -2,6 +2,8 @@ package com.lumicontrol.app
 
 import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.GestureDescription
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.Context
 import android.graphics.Path
 import android.media.AudioManager
@@ -116,32 +118,42 @@ class ProjectorAccessibilityService : AccessibilityService() {
     }
 
     fun injectText(text: String): Boolean {
+        // Method 1: ACTION_SET_TEXT on focused/editable node
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            val root = rootInActiveWindow
+            if (root != null) {
+                val target = root.findFocus(AccessibilityNodeInfo.FOCUS_INPUT)
+                    ?: findEditableNode(root)
+                if (target != null) {
+                    val args = android.os.Bundle()
+                    args.putCharSequence(
+                        AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE,
+                        text
+                    )
+                    target.performAction(AccessibilityNodeInfo.ACTION_FOCUS)
+                    target.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, args)
+                    return true
+                }
+            }
+        }
+        // Method 2: clipboard + ACTION_PASTE
+        return injectTextViaClipboard(text)
+    }
+
+    private fun injectTextViaClipboard(text: String): Boolean {
+        try {
+            val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+            clipboard.setPrimaryClip(ClipData.newPlainText("LumiControl", text))
+        } catch (_: Exception) {
+            return false
+        }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             val root = rootInActiveWindow ?: return false
-            val focused = root.findFocus(AccessibilityNodeInfo.FOCUS_INPUT)
-            if (focused != null) {
-                // Focus first, then set text
-                val args = android.os.Bundle()
-                args.putCharSequence(
-                    AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE,
-                    text
-                )
-                focused.performAction(AccessibilityNodeInfo.ACTION_FOCUS)
-                focused.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, args)
-                return true
-            }
-            // Also try finding any editable text field
-            val editable = findEditableNode(root)
-            if (editable != null) {
-                val args = android.os.Bundle()
-                args.putCharSequence(
-                    AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE,
-                    text
-                )
-                editable.performAction(AccessibilityNodeInfo.ACTION_FOCUS)
-                editable.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, args)
-                return true
-            }
+            val target = root.findFocus(AccessibilityNodeInfo.FOCUS_INPUT)
+                ?: findEditableNode(root) ?: return false
+            target.performAction(AccessibilityNodeInfo.ACTION_FOCUS)
+            target.performAction(AccessibilityNodeInfo.ACTION_PASTE)
+            return true
         }
         return false
     }
