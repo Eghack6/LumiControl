@@ -56,11 +56,16 @@ class WebSocketHandler(port: Int) : NanoWSD(port) {
                         "pos" -> {
                             if (x != null && y != null) cursor?.moveCursor(x, y)
                         }
+                        "move" -> {
+                            val dx = (msg["dx"] as? Number)?.toFloat() ?: 0f
+                            val dy = (msg["dy"] as? Number)?.toFloat() ?: 0f
+                            cursor?.moveCursorBy(dx, dy)
+                        }
                         "click" -> {
-                            if (x != null && y != null) {
-                                cursor?.moveCursor(x, y)
-                                svc?.injectClick(x, y)
-                            }
+                            val cx = x ?: cursor?.getCursorPosition()?.first ?: return@onMain
+                            val cy = y ?: cursor?.getCursorPosition()?.second ?: return@onMain
+                            cursor?.moveCursor(cx, cy)
+                            svc?.injectClick(cx, cy)
                         }
                         "scroll" -> {
                             if (x != null && y != null) {

@@ -21,6 +21,8 @@ function connectWs() {
 function wsSend(data) {
   if (ws && ws.readyState === WebSocket.OPEN) {
     ws.send(JSON.stringify(data));
+  } else if (data.type === 'move') {
+    touchCmd('pos', cursorX, cursorY);
   } else {
     touchCmd(data.type, data.x, data.y, data.dx, data.dy);
   }
@@ -66,19 +68,14 @@ document.getElementById('textInput').addEventListener('keydown', (e) => {
   if (e.key === 'Enter') sendText();
 });
 
-// ---- Touchpad: move cursor only ----
+// ---- Touchpad: relative cursor control ----
 const touchpad = document.getElementById('touchpad');
 const clickBtn = document.getElementById('clickBtn');
 const cursor = document.getElementById('cursor');
-let touchX = 0, touchY = 0;
 
-function getTouchPos(clientX, clientY) {
-  const rect = touchpad.getBoundingClientRect();
-  return {
-    x: (clientX - rect.left) * (1920 / rect.width),
-    y: (clientY - rect.top) * (1080 / rect.height)
-  };
-}
+// Cursor position in screen coordinates (relative mode, starts at center)
+let cursorX = 960, cursorY = 540;
+let lastTouchX = 0, lastTouchY = 0;
 
 function showLocalCursor(clientX, clientY) {
   cursor.style.display = 'block';
@@ -89,20 +86,24 @@ function showLocalCursor(clientX, clientY) {
 touchpad.addEventListener('touchstart', (e) => {
   e.preventDefault();
   const t = e.touches[0];
-  const pos = getTouchPos(t.clientX, t.clientY);
-  touchX = pos.x; touchY = pos.y;
-  showLocalCursor(t.clientX - touchpad.getBoundingClientRect().left, t.clientY - touchpad.getBoundingClientRect().top);
-  wsSend({ type: 'pos', x: touchX, y: touchY });
+  const rect = touchpad.getBoundingClientRect();
+  lastTouchX = t.clientX - rect.left;
+  lastTouchY = t.clientY - rect.top;
+  showLocalCursor(lastTouchX, lastTouchY);
 });
 
 touchpad.addEventListener('touchmove', (e) => {
   e.preventDefault();
   const t = e.touches[0];
   const rect = touchpad.getBoundingClientRect();
-  const pos = getTouchPos(t.clientX, t.clientY);
-  touchX = pos.x; touchY = pos.y;
-  showLocalCursor(t.clientX - rect.left, t.clientY - rect.top);
-  wsSend({ type: 'pos', x: touchX, y: touchY });
+  const cx = t.clientX - rect.left;
+  const cy = t.clientY - rect.top;
+  cursorX += cx - lastTouchX;
+  cursorY += cy - lastTouchY;
+  lastTouchX = cx;
+  lastTouchY = cy;
+  showLocalCursor(cx, cy);
+  wsSend({ type: 'pos', x: cursorX, y: cursorY });
 });
 
 touchpad.addEventListener('touchend', () => { cursor.style.display = 'none'; });
@@ -110,7 +111,7 @@ touchpad.addEventListener('touchcancel', () => { cursor.style.display = 'none'; 
 
 // Click button
 clickBtn.addEventListener('click', () => {
-  wsSend({ type: 'click', x: touchX, y: touchY });
+  wsSend({ type: 'click', x: cursorX, y: cursorY });
 });
 clickBtn.addEventListener('touchstart', (e) => {
   e.stopPropagation();
@@ -119,9 +120,15 @@ clickBtn.addEventListener('touchstart', (e) => {
 // Mouse support (for desktop testing)
 touchpad.addEventListener('mousemove', (e) => {
   const rect = touchpad.getBoundingClientRect();
-  const pos = getTouchPos(e.clientX, e.clientY);
-  touchX = pos.x; touchY = pos.y;
-  if (e.buttons === 1) wsSend({ type: 'pos', x: touchX, y: touchY });
+  const cx = e.clientX - rect.left;
+  const cy = e.clientY - rect.top;
+  if (e.buttons === 1) {
+    cursorX += cx - lastTouchX;
+    cursorY += cy - lastTouchY;
+    wsSend({ type: 'pos', x: cursorX, y: cursorY });
+  }
+  lastTouchX = cx;
+  lastTouchY = cy;
 });
 
 // Keyboard shortcuts

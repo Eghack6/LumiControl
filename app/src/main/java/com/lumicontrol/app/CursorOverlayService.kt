@@ -96,6 +96,20 @@ class CursorOverlayService : Service() {
         try { wm.updateViewLayout(cursorView, params) } catch (_: Exception) {}
     }
 
+    /** Move cursor by delta from current position */
+    fun moveCursorBy(dx: Float, dy: Float) {
+        if (cursorView == null || params == null) return
+        params!!.x = (params!!.x + dx).toInt()
+        params!!.y = (params!!.y + dy).toInt()
+        try { wm.updateViewLayout(cursorView, params) } catch (_: Exception) {}
+    }
+
+    /** Get current cursor center position */
+    fun getCursorPosition(): Pair<Float, Float> {
+        val p = params ?: return Pair(screenW / 2f, screenH / 2f)
+        return Pair((p.x + SIZE / 2).toFloat(), (p.y + SIZE / 2).toFloat())
+    }
+
     fun retry() {
         createCursor()
     }
