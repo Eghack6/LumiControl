@@ -136,13 +136,15 @@ class HttpServer(private val ctx: Context, private val port: Int) : NanoHTTPD(po
         val y = params["y"]?.firstOrNull()?.toFloatOrNull() ?: return errorResponse("missing y")
 
         onMain {
-            com.lumicontrol.app.CursorOverlayService.instance?.moveCursor(x, y)
             if (type == "click") {
+                com.lumicontrol.app.CursorOverlayService.instance?.moveCursor(x, y)
                 ProjectorAccessibilityService.instance?.injectClick(x, y)
             } else if (type == "scroll") {
                 val dx = params["dx"]?.firstOrNull()?.toFloatOrNull() ?: 0f
                 val dy = params["dy"]?.firstOrNull()?.toFloatOrNull() ?: 0f
                 ProjectorAccessibilityService.instance?.injectScroll(x, y, dx, dy)
+            } else if (type == "pos") {
+                com.lumicontrol.app.CursorOverlayService.instance?.moveCursor(x, y)
             }
         }
         return okResponse()
