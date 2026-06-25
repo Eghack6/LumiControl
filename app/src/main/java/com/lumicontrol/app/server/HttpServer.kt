@@ -9,6 +9,8 @@ import android.os.Looper
 import android.provider.Settings
 import android.widget.Toast
 import androidx.core.content.FileProvider
+import com.lumicontrol.app.CrashLogger
+import com.lumicontrol.app.CursorOverlayService
 import com.lumicontrol.app.MainActivity
 import com.lumicontrol.app.ProjectorAccessibilityService
 import com.lumicontrol.app.SettingsManager
@@ -21,9 +23,22 @@ class HttpServer(private val ctx: Context, private val port: Int) : NanoHTTPD(po
 
     private val gson = Gson()
     private val mainHandler = Handler(Looper.getMainLooper())
+    private var lastRequestTime = 0L
+    private var wasConnected = false
+    private val disconnectRunnable = Runnable { checkDisconnect() }
+
+    init {
+        mainHandler.postDelayed(disconnectRunnable, 5000)
+    }
 
     override fun serve(session: IHTTPSession): Response {
         return try {
+            val now = System.currentTimeMillis()
+            if (lastRequestTime != 0L && now - lastRequestTime > 12000) {
+                // Reconnected after disconnect
+                showToast("连接成功！")
+            }
+            lastRequestTime = now
             val prev = MainActivity.clientRequestCount.getAndIncrement()
             if (prev == 0) MainActivity.notifyClientConnected()
             when (session.uri) {
@@ -39,6 +54,10 @@ class HttpServer(private val ctx: Context, private val port: Int) : NanoHTTPD(po
                     if (session.method == Method.POST) handleCursorImageUpload(session)
                     else serveCursorImage(session)
                 }
+                "/api/log" -> {
+                    val log = CrashLogger.getLog()
+                    newFixedLengthResponse(Response.Status.OK, "text/plain; charset=utf-8", log)
+                }
                 "/", "/index.html" -> serveAsset("index.html")
                 "/style.css" -> serveAsset("style.css")
                 "/app.js" -> serveAsset("app.js")
@@ -52,7 +71,7 @@ class HttpServer(private val ctx: Context, private val port: Int) : NanoHTTPD(po
 
     private fun statusJson(): String {
         val accessibilityOn = ProjectorAccessibilityService.instance != null
-        return """{"ip":"${MainActivity.serverIp}","port":$port,"accessibility":$accessibilityOn}"""
+        return """{"ip":"${MainActivity.serverIp}","port":$port,"accessibility":$accessibilityOn,"screenW":${CursorOverlayService.lastScreenW},"screenH":${CursorOverlayService.lastScreenH}}"""
     }
 
     private fun discoverJson(): String {
@@ -233,6 +252,21 @@ class HttpServer(private val ctx: Context, private val port: Int) : NanoHTTPD(po
 
     private fun showToast(msg: String) {
         mainHandler.post { Toast.makeText(ctx, msg, Toast.LENGTH_SHORT).show() }
+    }
+
+    private fun checkDisconnect() {
+        if (lastRequestTime == 0L) {
+            mainHandler.postDelayed(disconnectRunnable, 5000)
+            return
+        }
+        val elapsed = System.currentTimeMillis() - lastRequestTime
+        if (elapsed > 12000 && wasConnected) {
+            wasConnected = false
+            showToast("连接已断开")
+        } else if (elapsed <= 12000 && !wasConnected) {
+            wasConnected = true
+        }
+        mainHandler.postDelayed(disconnectRunnable, 5000)
     }
 
     private fun serveAsset(path: String): Response {

@@ -141,7 +141,7 @@ function renderSettings(container, s) {
       <div class="setting-row">
         <span class="setting-name">大小</span>
         <div class="setting-with-value">
-          <input type="range" class="setting-range" id="s-size" min="20" max="120" value="${s.cursorSize}">
+           <input type="range" class="setting-range" id="s-size" min="20" max="500" value="${s.cursorSize}">
           <span class="setting-val" id="s-size-val">${s.cursorSize}px</span>
         </div>
       </div>
@@ -158,13 +158,15 @@ function renderSettings(container, s) {
         </div>
       </div>
 
-      <div class="custom-cursor-upload" id="custom-cursor-area" style="${s.cursorShape === 'custom' ? '' : 'display:none'}">
-        <div class="custom-cursor-label">上传 PNG 图片作为自定义光标</div>
+      <div class="custom-cursor-section">
         <div class="custom-cursor-preview" id="cursor-preview">
           <img id="cursor-preview-img" src="" style="display:none">
-          <span id="cursor-preview-placeholder">点击选择图片</span>
+          <span id="cursor-preview-placeholder">暂无自定义光标</span>
         </div>
-        <input type="file" id="cursor-file-input" accept="image/png" style="display:none">
+        <div class="custom-cursor-upload" id="custom-cursor-area" style="${s.cursorShape === 'custom' ? '' : 'display:none'}">
+          <div class="custom-cursor-label">点击上传 PNG 图片作为自定义光标</div>
+          <input type="file" id="cursor-file-input" accept="image/png" style="display:none">
+        </div>
       </div>
 
       <div class="setting-row">
@@ -256,6 +258,11 @@ function renderSettings(container, s) {
           <span class="toggle-track"></span>
         </label>
       </div>
+
+      <div class="setting-row">
+        <span class="setting-name">导出日志</span>
+        <a class="setting-btn" href="http://${HOST}:${HTTP_PORT}/api/log" target="_blank">查看</a>
+      </div>
     </div>
   `;
 
@@ -285,13 +292,13 @@ function renderSettings(container, s) {
   });
 
   // Custom cursor upload
-  const previewArea = document.getElementById('cursor-preview');
   const fileInput = document.getElementById('cursor-file-input');
   const previewImg = document.getElementById('cursor-preview-img');
   const previewPlaceholder = document.getElementById('cursor-preview-placeholder');
 
-  if (previewArea && fileInput) {
-    previewArea.addEventListener('click', () => fileInput.click());
+  if (fileInput) {
+    // Click the upload area to trigger file select
+    document.getElementById('custom-cursor-area')?.addEventListener('click', () => fileInput.click());
 
     fileInput.addEventListener('change', () => {
       const file = fileInput.files[0];
@@ -316,10 +323,16 @@ function renderSettings(container, s) {
   }
 
   // Load existing custom cursor preview
-  if (previewImg && s.cursorShape === 'custom') {
+  if (previewImg) {
     previewImg.src = `http://${HOST}:${HTTP_PORT}/api/cursor-image?t=${Date.now()}`;
-    previewImg.style.display = 'block';
-    if (previewPlaceholder) previewPlaceholder.style.display = 'none';
+    previewImg.onload = () => {
+      previewImg.style.display = 'block';
+      if (previewPlaceholder) previewPlaceholder.style.display = 'none';
+    };
+    previewImg.onerror = () => {
+      previewImg.style.display = 'none';
+      if (previewPlaceholder) previewPlaceholder.style.display = '';
+    };
   }
 }
 
@@ -353,7 +366,7 @@ function saveSetting(key, value) {
 const touchpad = document.getElementById('touchpad');
 const cursor = document.getElementById('cursor');
 
-let cursorX = 960, cursorY = 540;
+let cursorX = 0, cursorY = 0;
 let lastTouchX = 0, lastTouchY = 0;
 let touchStartX = 0, touchStartY = 0;
 let isButtonTouch = false;
@@ -584,6 +597,10 @@ function pollStatus() {
       if (s.accessibility) {
         dot.classList.add('ok');
         label.textContent = '已连接';
+        if (s.screenW && s.screenH) {
+          cursorX = s.screenW / 2;
+          cursorY = s.screenH / 2;
+        }
       } else {
         dot.classList.add('warn');
         label.textContent = '无障碍未开启';

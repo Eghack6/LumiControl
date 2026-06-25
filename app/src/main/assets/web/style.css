@@ -718,10 +718,12 @@ main {
   font-weight: 500;
 }
 
-/* custom cursor upload */
+/* custom cursor section */
+.custom-cursor-section {
+  margin-bottom: 8px;
+}
 .custom-cursor-upload {
   margin-top: 4px;
-  margin-bottom: 8px;
   padding: 12px;
   border: 1px dashed var(--border);
   border-radius: 10px;
@@ -744,14 +746,8 @@ main {
   display: flex;
   align-items: center;
   justify-content: center;
-  cursor: pointer;
   overflow: hidden;
-  transition: border-color 0.2s;
   background: var(--surface2);
-}
-
-.custom-cursor-preview:hover {
-  border-color: var(--accent);
 }
 
 .custom-cursor-preview img {
@@ -802,6 +798,24 @@ main {
 
 .toggle input:checked + .toggle-track::after {
   transform: translateX(18px);
+}
+
+/* ---- settings link button ---- */
+.setting-btn {
+  height: 36px;
+  padding: 0 18px;
+  border-radius: 18px;
+  background: rgba(255,255,255,0.08);
+  color: var(--accent);
+  font-size: 14px;
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  touch-action: manipulation;
+}
+
+.setting-btn:active {
+  background: rgba(255,255,255,0.15);
 }
 
 /* ---- toast ---- */

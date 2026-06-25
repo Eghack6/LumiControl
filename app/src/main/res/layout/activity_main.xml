@@ -87,15 +87,6 @@
             android:layout_marginTop="6dp"
             android:gravity="center" />
 
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="（后续版本将添加设置选项）"
-            android:textSize="11sp"
-            android:textColor="#444"
-            android:layout_marginTop="20dp"
-            android:gravity="center" />
-
-    </LinearLayout>
+        </LinearLayout>
 
 </LinearLayout>

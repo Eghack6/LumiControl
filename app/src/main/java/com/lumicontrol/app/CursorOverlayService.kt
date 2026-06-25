@@ -31,6 +31,10 @@ class CursorOverlayService : Service() {
 
     companion object {
         var instance: CursorOverlayService? = null
+        var lastScreenW: Int = 1920
+            private set
+        var lastScreenH: Int = 1080
+            private set
     }
 
     override fun onCreate() {
@@ -39,7 +43,7 @@ class CursorOverlayService : Service() {
         SettingsManager.init(this)
         wm = getSystemService(WINDOW_SERVICE) as WindowManager
         getScreenSize()
-        currentSize = SettingsManager.get().cursorSize.coerceIn(20, 120)
+        currentSize = SettingsManager.get().cursorSize.coerceIn(20, 500)
         createCursor()
         applyInactivityTimeout()
     }
@@ -51,6 +55,8 @@ class CursorOverlayService : Service() {
             wm.defaultDisplay.getRealMetrics(metrics)
             screenW = metrics.widthPixels
             screenH = metrics.heightPixels
+            lastScreenW = screenW
+            lastScreenH = screenH
         } catch (_: Exception) {}
     }
 
@@ -108,7 +114,7 @@ class CursorOverlayService : Service() {
     /** Rebuild cursor after settings change */
     fun applySettings() {
         val s = SettingsManager.get()
-        currentSize = s.cursorSize.coerceIn(20, 120)
+        currentSize = s.cursorSize.coerceIn(20, 500)
         val oldCursor = cursorView
 
         // Create new ImageView

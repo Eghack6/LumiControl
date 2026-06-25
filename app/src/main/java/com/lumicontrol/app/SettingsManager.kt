@@ -58,7 +58,7 @@ object SettingsManager {
             0xE94560
         }
         val alpha = (s.cursorOpacity * 255 / 100).coerceIn(0, 255)
-        val size = s.cursorSize.coerceIn(20, 120)
+        val size = s.cursorSize.coerceIn(20, 500)
 
         return try {
             when (s.cursorShape) {

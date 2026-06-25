@@ -42,8 +42,11 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        CrashLogger.init(this)
+
         Thread.setDefaultUncaughtExceptionHandler { _, throwable ->
             try {
+                CrashLogger.log("CRASH", "应用崩溃", throwable)
                 val msg = "LumiControl崩溃退出\n${throwable.message ?: "未知错误"}"
                 Toast.makeText(this, msg, Toast.LENGTH_LONG).show()
                 Thread.sleep(2500)
