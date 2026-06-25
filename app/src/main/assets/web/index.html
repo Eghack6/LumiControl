@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+<title>LumiControl</title>
+<link rel="stylesheet" href="style.css">
+<link rel="icon" href="data:,">
+</head>
+<body>
+<div id="app">
+  <header>
+    <span id="deviceName">LumiControl</span>
+    <div class="status">
+      <span id="conn-status" class="dot"></span>
+      <span id="conn-label">连接中</span>
+    </div>
+  </header>
+
+  <main>
+    <section id="touchpad" aria-label="触控板">
+      <div id="cursor"></div>
+      <div class="click-btn" id="clickBtn">点击</div>
+      <div class="hint">滑动移动光标 · 点「点击」键确认</div>
+    </section>
+
+    <section class="controls">
+      <div class="dpad">
+        <button class="dpad-btn up" data-key="up" aria-label="上"></button>
+        <div class="dpad-row">
+          <button class="dpad-btn" data-key="left" aria-label="左"></button>
+          <button class="dpad-btn center" data-key="center" aria-label="确定"></button>
+          <button class="dpad-btn" data-key="right" aria-label="右"></button>
+        </div>
+        <button class="dpad-btn down" data-key="down" aria-label="下"></button>
+      </div>
+
+      <div class="actions">
+        <button data-key="home">主页</button>
+        <button data-key="back">返回</button>
+        <button data-key="menu">菜单</button>
+        <button data-key="settings">设置</button>
+      </div>
+
+      <div class="volume">
+        <button data-key="volume_down" aria-label="音量减">−</button>
+        <span>音量</span>
+        <button data-key="volume_up" aria-label="音量加">+</button>
+      </div>
+
+      <div class="input-group">
+        <input type="text" id="textInput" placeholder="输入文字..." autocomplete="off">
+        <button id="sendBtn">发送</button>
+      </div>
+
+      <details class="upload-section">
+        <summary>安装 APK</summary>
+        <div class="upload-zone" id="uploadZone">
+          <span>拖拽 APK 到此处，或点击选择文件</span>
+          <input type="file" id="fileInput" accept=".apk" hidden>
+        </div>
+        <div id="uploadProgress" class="upload-progress" hidden>
+          <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+          <span id="uploadStatus">上传中...</span>
+        </div>
+      </details>
+    </section>
+  </main>
+
+  <div id="toast"></div>
+</div>
+<script src="app.js"></script>
+</body>
+</html>

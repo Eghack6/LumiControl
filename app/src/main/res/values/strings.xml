@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">LumiControl</string>
+    <string name="channel_name">遥控服务</string>
+    <string name="channel_desc">保持遥控服务后台运行</string>
+    <string name="notification_title">遥控服务运行中</string>
+    <string name="notification_text">手机扫码即可控制投影仪</string>
+    <string name="accessibility_desc">允许接收触控手势以模拟遥控操作</string>
+</resources>

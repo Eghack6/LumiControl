@@ -1,0 +1,22 @@
+# --- Build outputs ---
+app/build/
+build/
+*.apk
+*.aab
+
+# --- Gradle ---
+.gradle/
+gradle-*.zip
+
+# --- IDE ---
+.idea/
+*.iml
+*.iws
+.DS_Store
+Thumbs.db
+
+# --- Local machine config ---
+local.properties
+
+# --- Android ---
+/app/release/

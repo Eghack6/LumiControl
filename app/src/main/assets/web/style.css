@@ -1,0 +1,402 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+:root {
+  --bg: #0d0d12;
+  --surface: #16161e;
+  --surface2: #1e1e2a;
+  --border: #2a2a3a;
+  --text: #e8e8ed;
+  --text2: #8888a0;
+  --accent: #e94560;
+  --accent-dim: rgba(233, 69, 96, 0.15);
+  --radius: 10px;
+  --safe-b: env(safe-area-inset-bottom, 0px);
+  --safe-t: env(safe-area-inset-top, 0px);
+}
+
+html, body {
+  height: 100%;
+  overflow: hidden;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  user-select: none;
+  -webkit-font-smoothing: antialiased;
+}
+
+#app {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  padding-top: var(--safe-t);
+  padding-bottom: var(--safe-b);
+}
+
+/* ---- header ---- */
+header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+#deviceName {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+}
+
+.status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text2);
+}
+
+.dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #666;
+  flex-shrink: 0;
+}
+
+.dot.ok    { background: #34c759; }
+.dot.warn  { background: #ff9f0a; }
+.dot.err   { background: var(--accent); }
+
+/* ---- main layout ---- */
+main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+/* ---- touchpad ---- */
+#touchpad {
+  flex: 1;
+  position: relative;
+  background: var(--surface);
+  margin: 8px;
+  border-radius: var(--radius);
+  touch-action: none;
+  min-height: 180px;
+  overflow: hidden;
+}
+
+#touchpad:active {
+  background: var(--surface2);
+}
+
+#cursor {
+  display: none;
+  position: absolute;
+  width: 22px;
+  height: 22px;
+  border: 2px solid var(--accent);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  box-shadow: 0 0 6px rgba(233, 69, 96, 0.4);
+}
+
+.hint {
+  position: absolute;
+  bottom: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  color: var(--text2);
+  font-size: 11px;
+  letter-spacing: 0.5px;
+  pointer-events: none;
+}
+
+/* ---- dedicated click button ---- */
+.click-btn {
+  position: absolute;
+  bottom: 14px;
+  right: 14px;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  user-select: none;
+  box-shadow: 0 2px 8px rgba(233, 69, 96, 0.4);
+  transition: transform 0.1s, opacity 0.1s;
+  z-index: 10;
+  touch-action: manipulation;
+}
+
+.click-btn:active {
+  transform: scale(0.92);
+  opacity: 0.8;
+}
+
+/* ---- controls section ---- */
+.controls {
+  flex-shrink: 0;
+  padding: 4px 8px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* ---- dpad ---- */
+.dpad {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+}
+
+.dpad-row {
+  display: flex;
+  gap: 3px;
+}
+
+.dpad-btn {
+  width: 52px;
+  height: 52px;
+  border: none;
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 0;
+  cursor: pointer;
+  position: relative;
+  transition: background 0.15s;
+}
+
+.dpad-btn::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 0;
+  height: 0;
+  border-style: solid;
+}
+
+.dpad-btn:active {
+  background: var(--accent-dim);
+}
+
+.dpad-btn.up::after {
+  border-width: 0 6px 8px 6px;
+  border-color: transparent transparent var(--text) transparent;
+  top: -2px;
+}
+
+.dpad-btn.down::after {
+  border-width: 8px 6px 0 6px;
+  border-color: var(--text) transparent transparent transparent;
+  bottom: -2px;
+}
+
+.dpad-btn[data-key="left"]::after {
+  border-width: 6px 8px 6px 0;
+  border-color: transparent var(--text) transparent transparent;
+  left: -2px;
+}
+
+.dpad-btn[data-key="right"]::after {
+  border-width: 6px 0 6px 8px;
+  border-color: transparent transparent transparent var(--text);
+  right: -2px;
+}
+
+.dpad-btn.center {
+  background: var(--accent);
+  color: #fff;
+  font-size: 20px;
+  line-height: 52px;
+  text-align: center;
+}
+
+.dpad-btn.center::after { display: none; }
+.dpad-btn.center:active { opacity: 0.8; }
+
+/* ---- action buttons ---- */
+.actions {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+}
+
+.actions button {
+  border: none;
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text2);
+  font-size: 13px;
+  padding: 11px 0;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.actions button:active {
+  background: var(--accent-dim);
+  color: var(--text);
+}
+
+/* ---- volume ---- */
+.volume {
+  display: grid;
+  grid-template-columns: 48px 1fr 48px;
+  align-items: center;
+  gap: 6px;
+  background: var(--surface);
+  border-radius: var(--radius);
+  padding: 4px;
+}
+
+.volume button {
+  border: none;
+  border-radius: 8px;
+  background: var(--surface2);
+  color: var(--text);
+  font-size: 20px;
+  padding: 10px 0;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.volume button:active { background: var(--accent-dim); }
+
+.volume span {
+  text-align: center;
+  font-size: 12px;
+  color: var(--text2);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+/* ---- input ---- */
+.input-group {
+  display: flex;
+  gap: 6px;
+}
+
+.input-group input {
+  flex: 1;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 15px;
+  padding: 10px 12px;
+  outline: none;
+  min-width: 0;
+}
+
+.input-group input:focus {
+  border-color: var(--accent);
+}
+
+.input-group input::placeholder {
+  color: var(--text2);
+}
+
+#sendBtn {
+  border: none;
+  border-radius: var(--radius);
+  background: var(--accent);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 10px 18px;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+#sendBtn:active { opacity: 0.8; }
+
+/* ---- APK upload ---- */
+.upload-section {
+  margin-top: 2px;
+}
+.upload-section summary {
+  font-size: 12px;
+  color: var(--text2);
+  cursor: pointer;
+  padding: 6px 0;
+  text-align: center;
+  letter-spacing: 0.5px;
+  user-select: none;
+}
+.upload-zone {
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+  padding: 18px 16px;
+  text-align: center;
+  color: var(--text2);
+  font-size: 12px;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+}
+.upload-zone.dragover {
+  border-color: var(--accent);
+  background: var(--accent-dim);
+  color: var(--text);
+}
+.upload-progress {
+  margin-top: 6px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text2);
+}
+.progress-bar {
+  flex: 1;
+  height: 4px;
+  background: var(--border);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.progress-fill {
+  height: 100%;
+  width: 0%;
+  background: var(--accent);
+  border-radius: 2px;
+  transition: width 0.2s;
+}
+
+/* ---- toast ---- */
+#toast {
+  position: fixed;
+  bottom: calc(100px + var(--safe-b));
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.88);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: #fff;
+  padding: 8px 18px;
+  border-radius: 20px;
+  font-size: 13px;
+  opacity: 0;
+  transition: opacity 0.25s;
+  pointer-events: none;
+  z-index: 100;
+  white-space: nowrap;
+}
+
+#toast.show { opacity: 1; }

@@ -1,0 +1,31 @@
+{
+  "project": "LumiControl",
+  "version": "1.0.0",
+  "build_tool": "gradle",
+  "gradle_version": "8.3",
+  "required_paths": {
+    "jdk": {
+      "path": "D:\\Develop\\aicoding\\jdk\\jdk-17.0.12+7",
+      "version": "17.0.12",
+      "env_var": "JAVA_HOME"
+    },
+    "android_sdk": {
+      "path": "D:\\Develop\\aicoding\\android-sdk",
+      "env_var": "ANDROID_HOME",
+      "platforms": ["android-34"],
+      "build_tools": ["34.0.0"]
+    }
+  },
+  "build_commands": {
+    "release": "gradlew.bat assembleRelease",
+    "debug": "gradlew.bat assembleDebug"
+  },
+  "rules": {
+    "prohibit_debug_build": true,
+    "prohibit_debug_build_reason": "禁止构建 debug 版本。debug 版使用默认调试签名，存在安全风险且性能未经优化。仅允许构建 release 版本用于生产部署。",
+    "release_build_only": true
+  },
+  "output": {
+    "release_apk": "app/build/outputs/apk/release/app-release.apk"
+  }
+}
