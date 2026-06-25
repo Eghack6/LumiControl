@@ -55,4 +55,4 @@ LumiControl 可以安装在任何安卓设备上，因此你可以：
 
 ## 许可证
 
-[CC BY-NC-SA 4.0](LICENSE) — 禁止商用
+[GNU General Public License v3.0](LICENSE)
