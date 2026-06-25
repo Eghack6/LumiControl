@@ -24,6 +24,8 @@ function connectWs() {
 function wsSend(data) {
   if (ws && ws.readyState === WebSocket.OPEN) {
     ws.send(JSON.stringify(data));
+  } else if (data.type === 'click') {
+    touchCmd('click', cursorX, cursorY);
   } else if (data.type === 'move') {
     touchCmd('pos', cursorX, cursorY);
   } else {
@@ -79,7 +81,7 @@ const touchpad = document.getElementById('touchpad');
 const clickBtn = document.getElementById('clickBtn');
 const cursor = document.getElementById('cursor');
 
-// Cursor position in screen coordinates (relative mode, starts at center)
+// Local cursor position (for HTTP fallback only; WS uses server-side position)
 let cursorX = 960, cursorY = 540;
 let lastTouchX = 0, lastTouchY = 0;
 
@@ -104,24 +106,26 @@ touchpad.addEventListener('touchmove', (e) => {
   const rect = touchpad.getBoundingClientRect();
   const cx = t.clientX - rect.left;
   const cy = t.clientY - rect.top;
-  cursorX += (cx - lastTouchX) * SENSITIVITY;
-  cursorY += (cy - lastTouchY) * SENSITIVITY;
+  const dx = (cx - lastTouchX) * SENSITIVITY;
+  const dy = (cy - lastTouchY) * SENSITIVITY;
+  cursorX += dx;
+  cursorY += dy;
   lastTouchX = cx;
   lastTouchY = cy;
   showLocalCursor(cx, cy);
-  wsSend({ type: 'pos', x: cursorX, y: cursorY });
+  wsSend({ type: 'move', dx, dy });
 });
 
 touchpad.addEventListener('touchend', () => { cursor.style.display = 'none'; });
 touchpad.addEventListener('touchcancel', () => { cursor.style.display = 'none'; });
 
-// Click button
+// Click button — no coordinates, server reads cursor overlay position
 clickBtn.addEventListener('touchend', (e) => {
   e.preventDefault();
-  wsSend({ type: 'click', x: cursorX, y: cursorY });
+  wsSend({ type: 'click' });
 });
 clickBtn.addEventListener('click', () => {
-  wsSend({ type: 'click', x: cursorX, y: cursorY });
+  wsSend({ type: 'click' });
 });
 
 // Mouse support (for desktop testing)
@@ -130,9 +134,11 @@ touchpad.addEventListener('mousemove', (e) => {
   const cx = e.clientX - rect.left;
   const cy = e.clientY - rect.top;
   if (e.buttons === 1) {
-    cursorX += (cx - lastTouchX) * SENSITIVITY;
-    cursorY += (cy - lastTouchY) * SENSITIVITY;
-    wsSend({ type: 'pos', x: cursorX, y: cursorY });
+    const dx = (cx - lastTouchX) * SENSITIVITY;
+    const dy = (cy - lastTouchY) * SENSITIVITY;
+    cursorX += dx;
+    cursorY += dy;
+    wsSend({ type: 'move', dx, dy });
   }
   lastTouchX = cx;
   lastTouchY = cy;
