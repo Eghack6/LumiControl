@@ -143,10 +143,6 @@ class HttpServer(private val ctx: Context, private val port: Int) : NanoHTTPD(po
                 val dx = params["dx"]?.firstOrNull()?.toFloatOrNull() ?: 0f
                 val dy = params["dy"]?.firstOrNull()?.toFloatOrNull() ?: 0f
                 ProjectorAccessibilityService.instance?.injectScroll(x, y, dx, dy)
-            } else if (type == "longpress_start") {
-                ProjectorAccessibilityService.instance?.startLongPress(x, y)
-            } else if (type == "longpress_stop") {
-                ProjectorAccessibilityService.instance?.stopLongPress()
             }
         }
         return okResponse()

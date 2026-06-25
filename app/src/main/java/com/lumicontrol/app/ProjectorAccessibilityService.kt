@@ -66,36 +66,6 @@ class ProjectorAccessibilityService : AccessibilityService() {
         }
     }
 
-    fun startLongPress(x: Float, y: Float) {
-        try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-                val path = Path()
-                path.moveTo(x, y)
-                val gesture = GestureDescription.Builder()
-                    .addStroke(GestureDescription.StrokeDescription(path, 0, 30_000))
-                    .build()
-                dispatchGesture(gesture, null, null)
-            }
-        } catch (e: Exception) {
-            android.util.Log.e("LumiControl", "startLongPress failed", e)
-        }
-    }
-
-    fun stopLongPress() {
-        try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                try {
-                    val m = android.accessibilityservice.AccessibilityService::class.java.getMethod("cancelGesture")
-                    m.invoke(this)
-                } catch (_: Exception) {
-                    android.util.Log.e("LumiControl", "cancelGesture reflection failed")
-                }
-            }
-        } catch (e: Exception) {
-            android.util.Log.e("LumiControl", "stopLongPress failed", e)
-        }
-    }
-
     fun injectScroll(x: Float, y: Float, dx: Float, dy: Float) {
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
