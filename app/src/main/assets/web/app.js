@@ -2,8 +2,7 @@ const HOST = window.location.hostname;
 const HTTP_PORT = 4560;
 const WS_PORT = 4561;
 
-// Sensitivity multiplier for cursor movement
-const SENSITIVITY = 2.5;
+let SENSITIVITY = 2.5;
 
 // ---- WebSocket ----
 let ws = null;
@@ -43,7 +42,11 @@ function apiPost(path, body) {
   }).then(r => r.json()).catch(() => ({ ok: false, error: '网络错误' }));
 }
 
-/** Touch events via HTTP GET (simple, reliable) */
+function apiGet(path) {
+  return fetch(`http://${HOST}:${HTTP_PORT}/api${path}`)
+    .then(r => r.json()).catch(() => null);
+}
+
 function touchCmd(type, x, y, dx, dy) {
   const p = new URLSearchParams({ type, x: Math.round(x), y: Math.round(y) });
   if (dx !== undefined) p.set('dx', Math.round(dx));
@@ -76,32 +79,315 @@ document.getElementById('textInput').addEventListener('keydown', (e) => {
   if (e.key === 'Enter') sendText();
 });
 
-// ---- Touchpad: relative cursor control ----
+// ---- Tab switching ----
+document.getElementById('tabBar').addEventListener('click', (e) => {
+  const tab = e.target.closest('[data-tab]');
+  if (!tab) return;
+  switchTab(tab.dataset.tab);
+});
+
+// Settings button
+document.getElementById('settingsBtn').addEventListener('click', () => {
+  switchTab('settings');
+});
+
+// Settings back button
+document.getElementById('settingsBack').addEventListener('click', () => {
+  switchTab('touchpad');
+});
+
+function switchTab(name) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  if (name !== 'settings') {
+    document.querySelector('.tab-btn[data-tab="' + name + '"]')?.classList.add('active');
+  }
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-' + name)?.classList.add('active');
+  if (name === 'settings') loadSettings();
+}
+
+// ---- Settings ----
+let cachedSettings = null;
+
+function loadSettings() {
+  const container = document.getElementById('settingsContainer');
+  container.innerHTML = '<div class="settings-loading">加载中...</div>';
+  apiGet('/settings').then(s => {
+    if (!s) { container.innerHTML = '<div class="settings-loading">加载失败</div>'; return; }
+    cachedSettings = s;
+    SENSITIVITY = s.sensitivity || 2.5;
+    renderSettings(container, s);
+  });
+}
+
+function renderSettings(container, s) {
+  const shapes = [
+    { value: 'circle', label: '◯ 圆形' },
+    { value: 'dot', label: '● 圆点' },
+    { value: 'arrow', label: '➤ 箭头' },
+    { value: 'crosshair', label: '✚ 十字' },
+    { value: 'custom', label: '✏ 自定义' }
+  ];
+
+  container.innerHTML = `
+    <div class="settings-group">
+      <div class="settings-label">光标外观</div>
+
+      <div class="setting-row">
+        <span class="setting-name">颜色</span>
+        <input type="color" class="setting-color" id="s-color" value="${s.cursorColor}">
+      </div>
+
+      <div class="setting-row">
+        <span class="setting-name">大小</span>
+        <div class="setting-with-value">
+          <input type="range" class="setting-range" id="s-size" min="20" max="120" value="${s.cursorSize}">
+          <span class="setting-val" id="s-size-val">${s.cursorSize}px</span>
+        </div>
+      </div>
+
+      <div class="setting-row">
+        <span class="setting-name">形状</span>
+        <div class="shape-options" id="s-shape">
+          ${shapes.map(sh => `
+            <label class="shape-option${sh.value === s.cursorShape ? ' active' : ''}">
+              <input type="radio" name="shape" value="${sh.value}"${sh.value === s.cursorShape ? ' checked' : ''}>
+              <span>${sh.label}</span>
+            </label>
+          `).join('')}
+        </div>
+      </div>
+
+      <div class="custom-cursor-upload" id="custom-cursor-area" style="${s.cursorShape === 'custom' ? '' : 'display:none'}">
+        <div class="custom-cursor-label">上传 PNG 图片作为自定义光标</div>
+        <div class="custom-cursor-preview" id="cursor-preview">
+          <img id="cursor-preview-img" src="" style="display:none">
+          <span id="cursor-preview-placeholder">点击选择图片</span>
+        </div>
+        <input type="file" id="cursor-file-input" accept="image/png" style="display:none">
+      </div>
+
+      <div class="setting-row">
+        <span class="setting-name">透明度</span>
+        <div class="setting-with-value">
+          <input type="range" class="setting-range" id="s-opacity" min="20" max="100" value="${s.cursorOpacity}">
+          <span class="setting-val" id="s-opacity-val">${s.cursorOpacity}%</span>
+        </div>
+      </div>
+
+      <div class="setting-row">
+        <span class="setting-name">闲置隐藏</span>
+        <select class="setting-select" id="s-timeout">
+          <option value="3"${s.inactivityTimeout === 3 ? ' selected' : ''}>3 秒</option>
+          <option value="5"${s.inactivityTimeout === 5 ? ' selected' : ''}>5 秒</option>
+          <option value="10"${s.inactivityTimeout === 10 ? ' selected' : ''}>10 秒</option>
+          <option value="0"${s.inactivityTimeout === 0 ? ' selected' : ''}>永不隐藏</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="settings-group">
+      <div class="settings-label">触控板</div>
+
+      <div class="setting-row">
+        <span class="setting-name">灵敏度</span>
+        <div class="setting-with-value">
+          <input type="range" class="setting-range" id="s-sensitivity" min="1" max="6" step="0.5" value="${s.sensitivity}">
+          <span class="setting-val" id="s-sensitivity-val">${s.sensitivity}x</span>
+        </div>
+      </div>
+
+      <div class="setting-row">
+        <span class="setting-name">轻触点击</span>
+        <label class="toggle">
+          <input type="checkbox" id="s-taptoclick"${s.tapToClick ? ' checked' : ''}>
+          <span class="toggle-track"></span>
+        </label>
+      </div>
+
+      <div class="setting-row">
+        <span class="setting-name">滑动方向</span>
+        <select class="setting-select" id="s-scroll">
+          <option value="normal"${s.scrollDirection === 'normal' ? ' selected' : ''}>自然方向</option>
+          <option value="inverted"${s.scrollDirection === 'inverted' ? ' selected' : ''}>反向</option>
+        </select>
+      </div>
+
+      <div class="setting-row">
+        <span class="setting-name">摇杆速度</span>
+        <div class="setting-with-value">
+          <input type="range" class="setting-range" id="s-autoscroll-speed" min="1" max="10" step="1" value="${s.autoScrollSpeed || 5}">
+          <span class="setting-val" id="s-autoscroll-speed-val">${s.autoScrollSpeed || 5}</span>
+        </div>
+      </div>
+
+      <div class="setting-row">
+        <span class="setting-name">摇杆垂直反向</span>
+        <label class="toggle">
+          <input type="checkbox" id="s-invert-v"${s.invertVertical ? ' checked' : ''}>
+          <span class="toggle-track"></span>
+        </label>
+      </div>
+
+      <div class="setting-row">
+        <span class="setting-name">摇杆水平反向</span>
+        <label class="toggle">
+          <input type="checkbox" id="s-invert-h"${s.invertHorizontal ? ' checked' : ''}>
+          <span class="toggle-track"></span>
+        </label>
+      </div>
+    </div>
+
+    <div class="settings-group">
+      <div class="settings-label">反馈</div>
+
+      <div class="setting-row">
+        <span class="setting-name">按键震动</span>
+        <label class="toggle">
+          <input type="checkbox" id="s-vibrate"${s.vibrationFeedback ? ' checked' : ''}>
+          <span class="toggle-track"></span>
+        </label>
+      </div>
+
+      <div class="setting-row">
+        <span class="setting-name">按键音效</span>
+        <label class="toggle">
+          <input type="checkbox" id="s-sound"${s.keySound ? ' checked' : ''}>
+          <span class="toggle-track"></span>
+        </label>
+      </div>
+    </div>
+  `;
+
+  // Bind events
+  bindSetting('s-color', 'cursorColor', (el) => el.value);
+  bindSetting('s-size', 'cursorSize', (el) => parseInt(el.value), (el, v) => { document.getElementById('s-size-val').textContent = v + 'px'; });
+  bindSetting('s-opacity', 'cursorOpacity', (el) => parseInt(el.value), (el, v) => { document.getElementById('s-opacity-val').textContent = v + '%'; });
+  bindSetting('s-sensitivity', 'sensitivity', (el) => parseFloat(el.value), (el, v) => { document.getElementById('s-sensitivity-val').textContent = v + 'x'; SENSITIVITY = v; });
+  bindSetting('s-timeout', 'inactivityTimeout', (el) => parseInt(el.value));
+  bindSetting('s-taptoclick', 'tapToClick', (el) => el.checked);
+  bindSetting('s-scroll', 'scrollDirection', (el) => el.value);
+  bindSetting('s-vibrate', 'vibrationFeedback', (el) => el.checked);
+  bindSetting('s-sound', 'keySound', (el) => el.checked);
+  bindSetting('s-autoscroll-speed', 'autoScrollSpeed', (el) => parseInt(el.value), (el, v) => { document.getElementById('s-autoscroll-speed-val').textContent = v; });
+  bindSetting('s-invert-v', 'invertVertical', (el) => el.checked);
+  bindSetting('s-invert-h', 'invertHorizontal', (el) => el.checked);
+
+  // Shape radios
+  document.querySelectorAll('#s-shape input').forEach(r => {
+    r.addEventListener('change', () => {
+      document.querySelectorAll('.shape-option').forEach(o => o.classList.remove('active'));
+      r.closest('.shape-option').classList.add('active');
+      saveSetting('cursorShape', r.value);
+      const area = document.getElementById('custom-cursor-area');
+      if (area) area.style.display = r.value === 'custom' ? '' : 'none';
+    });
+  });
+
+  // Custom cursor upload
+  const previewArea = document.getElementById('cursor-preview');
+  const fileInput = document.getElementById('cursor-file-input');
+  const previewImg = document.getElementById('cursor-preview-img');
+  const previewPlaceholder = document.getElementById('cursor-preview-placeholder');
+
+  if (previewArea && fileInput) {
+    previewArea.addEventListener('click', () => fileInput.click());
+
+    fileInput.addEventListener('change', () => {
+      const file = fileInput.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        previewImg.src = e.target.result;
+        previewImg.style.display = 'block';
+        if (previewPlaceholder) previewPlaceholder.style.display = 'none';
+      };
+      reader.readAsDataURL(file);
+      const form = new FormData();
+      form.append('image', file);
+      fetch(`http://${HOST}:${HTTP_PORT}/api/cursor-image`, {
+        method: 'POST',
+        body: form
+      }).then(r => r.json()).then(r => {
+        if (!r.ok) toast(r.error || '上传失败');
+        else toast('✔ 自定义光标已应用');
+      }).catch(() => toast('网络错误'));
+    });
+  }
+
+  // Load existing custom cursor preview
+  if (previewImg && s.cursorShape === 'custom') {
+    previewImg.src = `http://${HOST}:${HTTP_PORT}/api/cursor-image?t=${Date.now()}`;
+    previewImg.style.display = 'block';
+    if (previewPlaceholder) previewPlaceholder.style.display = 'none';
+  }
+}
+
+function bindSetting(id, key, getValue, onUpdate) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.addEventListener('input', () => {
+    const v = getValue(el);
+    if (onUpdate) onUpdate(el, v);
+    saveSetting(key, v);
+  });
+  el.addEventListener('change', () => {
+    const v = getValue(el);
+    saveSetting(key, v);
+  });
+}
+
+let saveTimer = null;
+function saveSetting(key, value) {
+  if (!cachedSettings) return;
+  cachedSettings[key] = value;
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => {
+    apiPost('/settings', cachedSettings).then(r => {
+      if (r && r.ok) toast('✔ 已应用');
+    });
+  }, 300);
+}
+
+// ---- Touchpad ----
 const touchpad = document.getElementById('touchpad');
-const clickBtn = document.getElementById('clickBtn');
 const cursor = document.getElementById('cursor');
 
-// Local cursor position (for HTTP fallback only; WS uses server-side position)
 let cursorX = 960, cursorY = 540;
 let lastTouchX = 0, lastTouchY = 0;
+let touchStartX = 0, touchStartY = 0;
+let isButtonTouch = false;
+let touchMoved = false;
+let cursorVisible = false;
 
 function showLocalCursor(clientX, clientY) {
-  cursor.style.display = 'block';
-  cursor.style.left = clientX + 'px';
-  cursor.style.top = clientY + 'px';
+  if (!cursorVisible) {
+    cursor.style.display = 'block';
+    cursorVisible = true;
+  }
+  cursor.style.transform = `translate(${clientX - 11}px, ${clientY - 11}px)`;
 }
 
 touchpad.addEventListener('touchstart', (e) => {
-  e.preventDefault();
+  if (e.target.closest('button')) {
+    isButtonTouch = true;
+    return;
+  }
+  isButtonTouch = false;
+  touchMoved = false;
   const t = e.touches[0];
   const rect = touchpad.getBoundingClientRect();
   lastTouchX = t.clientX - rect.left;
   lastTouchY = t.clientY - rect.top;
+  touchStartX = lastTouchX;
+  touchStartY = lastTouchY;
   showLocalCursor(lastTouchX, lastTouchY);
 });
 
 touchpad.addEventListener('touchmove', (e) => {
+  if (isButtonTouch) return;
   e.preventDefault();
+  touchMoved = true;
   const t = e.touches[0];
   const rect = touchpad.getBoundingClientRect();
   const cx = t.clientX - rect.left;
@@ -116,24 +402,38 @@ touchpad.addEventListener('touchmove', (e) => {
   wsSend({ type: 'move', dx, dy });
 });
 
-touchpad.addEventListener('touchend', () => { cursor.style.display = 'none'; });
-touchpad.addEventListener('touchcancel', () => { cursor.style.display = 'none'; });
-
-// Click button — no coordinates, server reads cursor overlay position
-clickBtn.addEventListener('touchend', (e) => {
-  e.preventDefault();
-  wsSend({ type: 'click' });
+touchpad.addEventListener('touchend', () => {
+  cursor.style.display = 'none';
+  cursorVisible = false;
+  if (isButtonTouch || touchMoved) return;
+  const tapEnabled = cachedSettings ? cachedSettings.tapToClick : true;
+  if (tapEnabled) {
+    wsSend({ type: 'click' });
+    toast('点击');
+  }
 });
-clickBtn.addEventListener('click', () => {
-  wsSend({ type: 'click' });
+
+touchpad.addEventListener('touchcancel', () => { cursor.style.display = 'none'; cursorVisible = false; });
+
+// Mouse tap-to-click on touchpad
+let mouseDown = false;
+touchpad.addEventListener('mousedown', (e) => {
+  if (e.target.closest('button')) return;
+  mouseDown = true;
+  touchMoved = false;
+  const rect = touchpad.getBoundingClientRect();
+  lastTouchX = e.clientX - rect.left;
+  lastTouchY = e.clientY - rect.top;
+  touchStartX = lastTouchX;
+  touchStartY = lastTouchY;
 });
 
-// Mouse support (for desktop testing)
 touchpad.addEventListener('mousemove', (e) => {
   const rect = touchpad.getBoundingClientRect();
   const cx = e.clientX - rect.left;
   const cy = e.clientY - rect.top;
   if (e.buttons === 1) {
+    touchMoved = true;
     const dx = (cx - lastTouchX) * SENSITIVITY;
     const dy = (cy - lastTouchY) * SENSITIVITY;
     cursorX += dx;
@@ -143,6 +443,110 @@ touchpad.addEventListener('mousemove', (e) => {
   lastTouchX = cx;
   lastTouchY = cy;
 });
+
+touchpad.addEventListener('mouseup', (e) => {
+  if (e.target.closest('button')) return;
+  if (mouseDown && !touchMoved) {
+    const tapEnabled = cachedSettings ? cachedSettings.tapToClick : true;
+    if (tapEnabled) {
+      wsSend({ type: 'click' });
+      toast('点击');
+    }
+  }
+  mouseDown = false;
+});
+
+touchpad.addEventListener('mouseleave', () => { mouseDown = false; });
+
+// ---- Joystick ----
+const joystick = document.getElementById('joystick');
+const joystickKnob = document.getElementById('joystickKnob');
+let joystickScrollTimer = null;
+let joystickDir = { dx: 0, dy: 0 };
+
+if (joystick && joystickKnob) {
+  const R = 28;
+  const DEAD = 10;
+
+  function handleJoystick(clientX, clientY) {
+    const rect = joystick.getBoundingClientRect();
+    const cx = (clientX - rect.left) - R;
+    const cy = (clientY - rect.top) - R;
+    const dist = Math.sqrt(cx * cx + cy * cy);
+    const clampDist = Math.min(dist, R);
+    const angle = Math.atan2(cy, cx);
+    const knobX = Math.cos(angle) * clampDist;
+    const knobY = Math.sin(angle) * clampDist;
+    joystickKnob.style.transform = `translate(${knobX}px, ${knobY}px)`;
+
+    if (dist < DEAD) {
+      joystickDir.dx = 0;
+      joystickDir.dy = 0;
+      joystick.classList.remove('active');
+      return;
+    }
+    joystick.classList.add('active');
+    const speed = (cachedSettings && cachedSettings.autoScrollSpeed) || 5;
+    const amount = 2 * speed;
+    if (Math.abs(cx) > Math.abs(cy)) {
+      joystickDir.dx = cx > 0 ? amount : -amount;
+      joystickDir.dy = 0;
+      joystickKnob.style.transform = `translate(${cx > 0 ? clampDist : -clampDist}px, 0)`;
+    } else {
+      joystickDir.dx = 0;
+      joystickDir.dy = cy > 0 ? amount : -amount;
+      joystickKnob.style.transform = `translate(0, ${cy > 0 ? clampDist : -clampDist}px)`;
+    }
+  }
+
+  function startJoystickScroll() {
+    if (joystickScrollTimer) return;
+    joystickScrollTimer = setInterval(() => {
+      if (joystickDir.dx !== 0 || joystickDir.dy !== 0) {
+        const iv = cachedSettings ? cachedSettings.invertVertical : false;
+        const ih = cachedSettings ? cachedSettings.invertHorizontal : false;
+        const fdx = ih ? -joystickDir.dx : joystickDir.dx;
+        const fdy = iv ? -joystickDir.dy : joystickDir.dy;
+        wsSend({ type: 'scroll', x: cursorX, y: cursorY, dx: fdx, dy: fdy });
+      }
+    }, 100);
+  }
+
+  function stopJoystick() {
+    if (joystickScrollTimer) { clearInterval(joystickScrollTimer); joystickScrollTimer = null; }
+    joystickDir.dx = 0;
+    joystickDir.dy = 0;
+    joystick.classList.remove('active');
+    joystickKnob.style.transform = 'translate(0,0)';
+  }
+
+  joystick.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    startJoystickScroll();
+    handleJoystick(e.touches[0].clientX, e.touches[0].clientY);
+  });
+
+  joystick.addEventListener('touchmove', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    handleJoystick(e.touches[0].clientX, e.touches[0].clientY);
+  });
+
+  joystick.addEventListener('touchend', (e) => { e.stopPropagation(); stopJoystick(); });
+  joystick.addEventListener('touchcancel', (e) => { e.stopPropagation(); stopJoystick(); });
+
+  joystick.addEventListener('mousedown', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    startJoystickScroll();
+    handleJoystick(e.clientX, e.clientY);
+    const onMove = (ev) => handleJoystick(ev.clientX, ev.clientY);
+    const onUp = () => { stopJoystick(); document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp); };
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  });
+}
 
 // Keyboard shortcuts
 document.addEventListener('keydown', (e) => {
@@ -212,21 +616,22 @@ function toast(msg) {
 const uploadZone = document.getElementById('uploadZone');
 const fileInput = document.getElementById('fileInput');
 
-uploadZone.addEventListener('click', () => fileInput.click());
-
-uploadZone.addEventListener('dragover', (e) => {
-  e.preventDefault();
-  uploadZone.classList.add('dragover');
-});
-uploadZone.addEventListener('dragleave', () => {
-  uploadZone.classList.remove('dragover');
-});
-uploadZone.addEventListener('drop', (e) => {
-  e.preventDefault();
-  uploadZone.classList.remove('dragover');
-  const file = e.dataTransfer.files[0];
-  if (file) uploadApk(file);
-});
+if (uploadZone) {
+  uploadZone.addEventListener('click', () => fileInput.click());
+  uploadZone.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    uploadZone.classList.add('dragover');
+  });
+  uploadZone.addEventListener('dragleave', () => {
+    uploadZone.classList.remove('dragover');
+  });
+  uploadZone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    uploadZone.classList.remove('dragover');
+    const file = e.dataTransfer.files[0];
+    if (file) uploadApk(file);
+  });
+}
 
 fileInput.addEventListener('change', () => {
   if (fileInput.files[0]) uploadApk(fileInput.files[0]);

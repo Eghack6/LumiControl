@@ -11,60 +11,81 @@
 <div id="app">
   <header>
     <span id="deviceName">LumiControl</span>
-    <div class="status">
-      <span id="conn-status" class="dot"></span>
-      <span id="conn-label">连接中</span>
+    <div class="header-right">
+      <div class="status">
+        <span id="conn-status" class="dot"></span>
+        <span id="conn-label">连接中</span>
+      </div>
+      <button class="settings-btn" id="settingsBtn" aria-label="设置">&#9881;</button>
     </div>
   </header>
 
+  <div id="tabBar">
+    <button class="tab-btn active" data-tab="touchpad">触控板</button>
+    <button class="tab-btn" data-tab="controls">遥控器</button>
+  </div>
+
   <main>
-    <section id="touchpad" aria-label="触控板">
-      <div id="cursor"></div>
-      <div class="click-btn" id="clickBtn">点击</div>
-      <div class="hint">滑动移动光标 · 点「点击」键确认</div>
+    <!-- Page 1: Touchpad -->
+    <section id="page-touchpad" class="page active">
+      <div id="touchpad">
+        <div id="cursor"></div>
+        <div id="touchpadHint">轻触点击 &#xFE0E; 滑动移动</div>
+        <div class="touchpad-bottom">
+          <button class="touch-back" data-key="back" aria-label="返回">返回</button>
+          <div class="joystick-wrap">
+            <div class="joystick" id="joystick">
+              <div class="joystick-knob" id="joystickKnob"></div>
+            </div>
+          </div>
+        </div>
+      </div>
     </section>
 
-    <section class="controls">
-      <div class="dpad">
-        <button class="dpad-btn up" data-key="up" aria-label="上"></button>
-        <div class="dpad-row">
-          <button class="dpad-btn" data-key="left" aria-label="左"></button>
-          <button class="dpad-btn center" data-key="center" aria-label="确定"></button>
-          <button class="dpad-btn" data-key="right" aria-label="右"></button>
+    <!-- Page 2: Controls -->
+    <section id="page-controls" class="page">
+      <div class="controls-scroll">
+        <div class="actions-grid">
+          <button data-key="home">主页</button>
+          <button data-key="back">返回</button>
+          <button data-key="menu">菜单</button>
+          <button data-key="settings">设置</button>
+          <button class="btn-reset" data-action="reset">复位</button>
         </div>
-        <button class="dpad-btn down" data-key="down" aria-label="下"></button>
-      </div>
 
-      <div class="actions">
-        <button data-key="home">主页</button>
-        <button data-key="back">返回</button>
-        <button data-key="menu">菜单</button>
-        <button data-key="settings">设置</button>
-        <button class="btn-reset" data-action="reset">复位</button>
-      </div>
-
-      <div class="volume">
-        <button data-key="volume_down" aria-label="音量减">−</button>
-        <span>音量</span>
-        <button data-key="volume_up" aria-label="音量加">+</button>
-      </div>
-
-      <div class="input-group">
-        <input type="text" id="textInput" placeholder="输入文字..." autocomplete="off">
-        <button id="sendBtn">发送</button>
-      </div>
-
-      <details class="upload-section">
-        <summary>安装 APK</summary>
-        <div class="upload-zone" id="uploadZone">
-          <span>拖拽 APK 到此处，或点击选择文件</span>
-          <input type="file" id="fileInput" accept=".apk" hidden>
+        <div class="volume-row">
+          <button data-key="volume_down">− 音量</button>
+          <button data-key="volume_up">音量 +</button>
         </div>
-        <div id="uploadProgress" class="upload-progress" hidden>
-          <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
-          <span id="uploadStatus">上传中...</span>
+
+        <div class="input-group">
+          <input type="text" id="textInput" placeholder="输入文字..." autocomplete="off">
+          <button id="sendBtn">发送</button>
         </div>
-      </details>
+
+        <div class="upload-section">
+          <div class="upload-label">安装 APK</div>
+          <div class="upload-zone" id="uploadZone">
+            <span>拖拽 APK 到此处，或点击选择文件</span>
+            <input type="file" id="fileInput" accept=".apk" hidden>
+          </div>
+          <div id="uploadProgress" class="upload-progress" hidden>
+            <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+            <span id="uploadStatus">上传中...</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Page 3: Settings -->
+    <section id="page-settings" class="page">
+      <div class="settings-header">
+        <button class="settings-back" id="settingsBack">← 返回</button>
+        <span class="settings-title">设置</span>
+      </div>
+      <div class="settings-scroll" id="settingsContainer">
+        <div class="settings-loading">加载中...</div>
+      </div>
     </section>
   </main>
 

@@ -6,15 +6,15 @@
 }
 
 :root {
-  --bg: #0d0d12;
-  --surface: #16161e;
-  --surface2: #1e1e2a;
-  --border: #2a2a3a;
-  --text: #e8e8ed;
-  --text2: #8888a0;
-  --accent: #e94560;
-  --accent-dim: rgba(233, 69, 96, 0.15);
-  --radius: 10px;
+  --bg: #0d0d14;
+  --surface: #17171f;
+  --surface2: #1f1f2b;
+  --border: #2c2c3a;
+  --text: #eeeef2;
+  --text2: #8b8ba0;
+  --accent: #6366f1;
+  --accent-dim: rgba(99, 102, 241, 0.15);
+  --radius: 12px;
   --safe-b: env(safe-area-inset-bottom, 0px);
   --safe-t: env(safe-area-inset-top, 0px);
 }
@@ -26,6 +26,7 @@ html, body {
   background: var(--bg);
   color: var(--text);
   user-select: none;
+  -webkit-user-select: none;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -42,7 +43,7 @@ header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 12px 16px;
+  padding: 10px 16px;
   background: var(--surface);
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;
@@ -54,12 +55,38 @@ header {
   letter-spacing: 0.3px;
 }
 
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
 .status {
   display: flex;
   align-items: center;
   gap: 6px;
   font-size: 12px;
   color: var(--text2);
+}
+
+.settings-btn {
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.08);
+  color: var(--text);
+  font-size: 20px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s;
+  touch-action: manipulation;
+}
+
+.settings-btn:active {
+  background: rgba(255,255,255,0.2);
 }
 
 .dot {
@@ -74,23 +101,73 @@ header {
 .dot.warn  { background: #ff9f0a; }
 .dot.err   { background: var(--accent); }
 
-/* ---- main layout ---- */
+/* ---- tab bar ---- */
+#tabBar {
+  display: flex;
+  flex-shrink: 0;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+
+.tab-btn {
+  flex: 1;
+  border: none;
+  background: transparent;
+  color: var(--text2);
+  font-size: 14px;
+  font-weight: 500;
+  padding: 10px 0;
+  cursor: pointer;
+  position: relative;
+  transition: color 0.15s;
+}
+
+.tab-btn.active {
+  color: var(--text);
+}
+
+.tab-btn.active::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 20%;
+  right: 20%;
+  height: 2px;
+  background: var(--accent);
+  border-radius: 1px;
+}
+
+/* ---- page system ---- */
 main {
   flex: 1;
   display: flex;
   flex-direction: column;
   min-height: 0;
+  position: relative;
 }
 
-/* ---- touchpad ---- */
+.page {
+  display: none;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.page.active {
+  display: flex;
+}
+
+/* ======== TOUCHPAD PAGE ======== */
+#page-touchpad {
+  padding: 6px;
+}
+
 #touchpad {
   flex: 1;
   position: relative;
   background: var(--surface);
-  margin: 8px;
   border-radius: var(--radius);
   touch-action: none;
-  min-height: 180px;
   overflow: hidden;
 }
 
@@ -100,62 +177,119 @@ main {
 
 #cursor {
   display: none;
-  position: absolute;
+  position: fixed;
   width: 22px;
   height: 22px;
   border: 2px solid var(--accent);
   border-radius: 50%;
-  transform: translate(-50%, -50%);
   pointer-events: none;
   box-shadow: 0 0 6px rgba(233, 69, 96, 0.4);
+  will-change: transform;
+  z-index: 9999;
 }
 
-.hint {
+#touchpadHint {
   position: absolute;
-  bottom: 14px;
+  top: 50%;
   left: 50%;
-  transform: translateX(-50%);
+  transform: translate(-50%, -50%);
   color: var(--text2);
-  font-size: 11px;
+  font-size: 14px;
   letter-spacing: 0.5px;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* ---- touchpad bottom bar ---- */
+.touchpad-bottom {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 88px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px;
+  z-index: 10;
   pointer-events: none;
 }
 
-/* ---- dedicated click button ---- */
-.click-btn {
-  position: absolute;
-  bottom: 14px;
-  right: 14px;
-  width: 56px;
-  height: 56px;
-  border-radius: 50%;
-  background: var(--accent);
-  color: #fff;
-  font-size: 13px;
-  font-weight: 600;
+.touchpad-bottom > * {
+  pointer-events: auto;
+}
+
+/* ---- touchpad back button ---- */
+.touch-back {
+  height: 48px;
+  padding: 0 20px;
+  border: none;
+  border-radius: 24px;
+  background: rgba(255,255,255,0.1);
+  color: var(--text);
+  font-size: 15px;
+  cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  cursor: pointer;
-  user-select: none;
-  box-shadow: 0 2px 8px rgba(233, 69, 96, 0.4);
-  transition: transform 0.1s, opacity 0.1s;
-  z-index: 10;
+  gap: 4px;
+  transition: background 0.15s;
   touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
-.click-btn:active {
-  transform: scale(0.92);
-  opacity: 0.8;
+.touch-back:active {
+  background: rgba(255,255,255,0.2);
 }
 
-/* ---- controls section ---- */
-.controls {
-  flex-shrink: 0;
-  padding: 4px 8px 12px;
+/* ---- joystick ---- */
+.joystick-wrap {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.joystick {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.15);
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  touch-action: none;
+}
+
+.joystick-knob {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.3);
+  transition: background 0.15s;
+  pointer-events: none;
+}
+
+.joystick.active .joystick-knob {
+  background: var(--accent);
+}
+
+/* ======== CONTROLS PAGE ======== */
+#page-controls {
+  overflow: hidden;
+}
+
+.controls-scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px 12px 20px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 16px;
+  -webkit-overflow-scrolling: touch;
 }
 
 /* ---- dpad ---- */
@@ -163,25 +297,25 @@ main {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 3px;
+  gap: 5px;
 }
 
 .dpad-row {
   display: flex;
-  gap: 3px;
+  gap: 5px;
 }
 
 .dpad-btn {
-  width: 52px;
-  height: 52px;
-  border: none;
+  width: 72px;
+  height: 72px;
+  border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--surface);
   color: var(--text);
   font-size: 0;
   cursor: pointer;
   position: relative;
-  transition: background 0.15s;
+  transition: background 0.15s, border-color 0.15s;
 }
 
 .dpad-btn::after {
@@ -196,108 +330,106 @@ main {
 
 .dpad-btn:active {
   background: var(--accent-dim);
+  border-color: var(--accent);
 }
 
 .dpad-btn.up::after {
-  border-width: 0 6px 8px 6px;
+  border-width: 0 9px 12px 9px;
   border-color: transparent transparent var(--text) transparent;
-  top: -2px;
+  top: -3px;
 }
 
 .dpad-btn.down::after {
-  border-width: 8px 6px 0 6px;
+  border-width: 12px 9px 0 9px;
   border-color: var(--text) transparent transparent transparent;
-  bottom: -2px;
+  bottom: -3px;
 }
 
 .dpad-btn[data-key="left"]::after {
-  border-width: 6px 8px 6px 0;
+  border-width: 9px 12px 9px 0;
   border-color: transparent var(--text) transparent transparent;
-  left: -2px;
+  left: -3px;
 }
 
 .dpad-btn[data-key="right"]::after {
-  border-width: 6px 0 6px 8px;
+  border-width: 9px 0 9px 12px;
   border-color: transparent transparent transparent var(--text);
-  right: -2px;
+  right: -3px;
 }
 
 .dpad-btn.center {
   background: var(--accent);
   color: #fff;
-  font-size: 20px;
-  line-height: 52px;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 72px;
   text-align: center;
+  border-color: var(--accent);
 }
 
 .dpad-btn.center::after { display: none; }
 .dpad-btn.center:active { opacity: 0.8; }
 
 /* ---- action buttons ---- */
-.actions {
+.actions-grid {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
-  gap: 6px;
+  gap: 8px;
 }
 
-.actions button {
-  border: none;
+.actions-grid button {
+  border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--surface);
   color: var(--text2);
-  font-size: 13px;
-  padding: 11px 0;
+  font-size: 14px;
+  font-weight: 500;
+  padding: 16px 0;
   cursor: pointer;
-  transition: background 0.15s, color 0.15s;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
 }
 
-.actions button:active {
+.actions-grid button:active {
   background: var(--accent-dim);
   color: var(--text);
+  border-color: var(--accent);
 }
 
-.actions .btn-reset {
+.actions-grid .btn-reset {
   background: var(--accent-dim);
   color: var(--accent);
   font-weight: 600;
+  border-color: transparent;
 }
 
 /* ---- volume ---- */
-.volume {
+.volume-row {
   display: grid;
-  grid-template-columns: 48px 1fr 48px;
-  align-items: center;
-  gap: 6px;
-  background: var(--surface);
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.volume-row button {
+  border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 4px;
-}
-
-.volume button {
-  border: none;
-  border-radius: 8px;
-  background: var(--surface2);
+  background: var(--surface);
   color: var(--text);
-  font-size: 20px;
-  padding: 10px 0;
+  font-size: 16px;
+  font-weight: 600;
+  padding: 16px 0;
   cursor: pointer;
-  transition: background 0.15s;
+  transition: background 0.15s, border-color 0.15s;
 }
 
-.volume button:active { background: var(--accent-dim); }
-
-.volume span {
-  text-align: center;
-  font-size: 12px;
-  color: var(--text2);
-  letter-spacing: 1px;
-  text-transform: uppercase;
+.volume-row button:active {
+  background: var(--accent-dim);
+  border-color: var(--accent);
 }
 
 /* ---- input ---- */
 .input-group {
   display: flex;
-  gap: 6px;
+  gap: 8px;
 }
 
 .input-group input {
@@ -307,9 +439,10 @@ main {
   background: var(--surface);
   color: var(--text);
   font-size: 15px;
-  padding: 10px 12px;
+  padding: 12px 14px;
   outline: none;
   min-width: 0;
+  transition: border-color 0.15s;
 }
 
 .input-group input:focus {
@@ -325,9 +458,9 @@ main {
   border-radius: var(--radius);
   background: var(--accent);
   color: #fff;
-  font-size: 13px;
-  font-weight: 500;
-  padding: 10px 18px;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 12px 22px;
   cursor: pointer;
   transition: opacity 0.15s;
 }
@@ -336,40 +469,44 @@ main {
 
 /* ---- APK upload ---- */
 .upload-section {
-  margin-top: 2px;
+  margin-top: 4px;
 }
-.upload-section summary {
-  font-size: 12px;
+
+.upload-label {
+  font-size: 13px;
   color: var(--text2);
-  cursor: pointer;
-  padding: 6px 0;
+  font-weight: 500;
+  padding: 4px 0 8px;
   text-align: center;
   letter-spacing: 0.5px;
-  user-select: none;
 }
+
 .upload-zone {
   border: 1px dashed var(--border);
   border-radius: var(--radius);
-  padding: 18px 16px;
+  padding: 20px 16px;
   text-align: center;
   color: var(--text2);
-  font-size: 12px;
+  font-size: 13px;
   cursor: pointer;
   transition: border-color 0.2s, background 0.2s;
 }
+
 .upload-zone.dragover {
   border-color: var(--accent);
   background: var(--accent-dim);
   color: var(--text);
 }
+
 .upload-progress {
-  margin-top: 6px;
+  margin-top: 8px;
   display: flex;
   align-items: center;
   gap: 8px;
   font-size: 12px;
   color: var(--text2);
 }
+
 .progress-bar {
   flex: 1;
   height: 4px;
@@ -377,12 +514,294 @@ main {
   border-radius: 2px;
   overflow: hidden;
 }
+
 .progress-fill {
   height: 100%;
   width: 0%;
   background: var(--accent);
   border-radius: 2px;
   transition: width 0.2s;
+}
+
+/* ======== SETTINGS PAGE ======== */
+#page-settings {
+  overflow: hidden;
+}
+
+.settings-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.settings-back {
+  height: 36px;
+  padding: 0 14px;
+  border: none;
+  border-radius: 18px;
+  background: rgba(255,255,255,0.08);
+  color: var(--text);
+  font-size: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  transition: background 0.15s;
+  touch-action: manipulation;
+}
+
+.settings-back:active {
+  background: rgba(255,255,255,0.2);
+}
+
+.settings-title {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.settings-scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px 12px 24px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.settings-loading {
+  text-align: center;
+  color: var(--text2);
+  padding: 40px 0;
+  font-size: 14px;
+}
+
+.settings-group {
+  margin-bottom: 20px;
+}
+
+.settings-label {
+  font-size: 12px;
+  color: var(--text2);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-weight: 600;
+  margin-bottom: 10px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+}
+
+.setting-row {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 4px 0;
+  gap: 12px;
+}
+
+.setting-name {
+  font-size: 14px;
+  color: var(--text);
+  flex-shrink: 0;
+  width: 72px;
+}
+
+/* color picker */
+.setting-color {
+  width: 40px;
+  height: 40px;
+  border: 2px solid var(--border);
+  border-radius: 8px;
+  padding: 2px;
+  cursor: pointer;
+  background: transparent;
+}
+
+/* range slider */
+.setting-with-value {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.setting-range {
+  flex: 1;
+  -webkit-appearance: none;
+  appearance: none;
+  height: 4px;
+  background: var(--border);
+  border-radius: 2px;
+  outline: none;
+}
+
+.setting-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--accent);
+  cursor: pointer;
+  border: none;
+}
+
+.setting-val {
+  font-size: 13px;
+  color: var(--text2);
+  min-width: 40px;
+  text-align: right;
+}
+
+/* select dropdown */
+.setting-select {
+  flex: 1;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 14px;
+  padding: 10px 36px 10px 12px;
+  outline: none;
+  cursor: pointer;
+  transition: border-color 0.15s;
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%238b8ba0' d='M6 8.5L1 3.5h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 12px;
+}
+
+.setting-select:focus {
+  border-color: var(--accent);
+}
+
+/* shape options */
+.shape-options {
+  flex: 1;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.shape-option {
+  flex: 1;
+  min-width: 60px;
+}
+
+.shape-option input { display: none; }
+
+.shape-option span {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  text-align: center;
+  padding: 10px 4px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  font-size: 13px;
+  color: var(--text2);
+  transition: all 0.2s;
+  cursor: pointer;
+}
+
+.shape-option:hover span {
+  border-color: var(--text2);
+}
+
+.shape-option.active span,
+.shape-option input:checked + span {
+  border-color: var(--accent);
+  background: var(--accent-dim);
+  color: var(--text);
+  font-weight: 500;
+}
+
+/* custom cursor upload */
+.custom-cursor-upload {
+  margin-top: 4px;
+  margin-bottom: 8px;
+  padding: 12px;
+  border: 1px dashed var(--border);
+  border-radius: 10px;
+  text-align: center;
+  transition: border-color 0.2s;
+}
+
+.custom-cursor-label {
+  font-size: 12px;
+  color: var(--text2);
+  margin-bottom: 8px;
+}
+
+.custom-cursor-preview {
+  width: 80px;
+  height: 80px;
+  margin: 0 auto;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  overflow: hidden;
+  transition: border-color 0.2s;
+  background: var(--surface2);
+}
+
+.custom-cursor-preview:hover {
+  border-color: var(--accent);
+}
+
+.custom-cursor-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.custom-cursor-preview span {
+  font-size: 12px;
+  color: var(--text2);
+}
+
+/* toggle switch */
+.toggle {
+  position: relative;
+  display: inline-block;
+  width: 44px;
+  height: 26px;
+  cursor: pointer;
+}
+
+.toggle input { display: none; }
+
+.toggle-track {
+  position: absolute;
+  inset: 0;
+  background: var(--border);
+  border-radius: 13px;
+  transition: background 0.2s;
+}
+
+.toggle-track::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--text);
+  transition: transform 0.2s;
+}
+
+.toggle input:checked + .toggle-track {
+  background: var(--accent);
+}
+
+.toggle input:checked + .toggle-track::after {
+  transform: translateX(18px);
 }
 
 /* ---- toast ---- */

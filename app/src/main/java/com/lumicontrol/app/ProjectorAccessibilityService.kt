@@ -35,51 +35,111 @@ class ProjectorAccessibilityService : AccessibilityService() {
     }
 
     fun injectMouseMove(x: Float, y: Float) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-            val path = Path()
-            path.moveTo(x, y)
-            val gesture = GestureDescription.Builder()
-                .addStroke(GestureDescription.StrokeDescription(path, 0, 1))
-                .build()
-            dispatchGesture(gesture, null, null)
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                val path = Path()
+                path.moveTo(x, y)
+                val gesture = GestureDescription.Builder()
+                    .addStroke(GestureDescription.StrokeDescription(path, 0, 1))
+                    .build()
+                dispatchGesture(gesture, null, null)
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("LumiControl", "injectMouseMove failed", e)
         }
     }
 
     fun injectClick(x: Float, y: Float) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-            val path = Path()
-            path.moveTo(x, y)
-            path.lineTo(x, y)  // ≥2 points required by GestureDescription
-            val stroke = GestureDescription.StrokeDescription(path, 0, 120)
-            val gesture = GestureDescription.Builder()
-                .addStroke(stroke)
-                .build()
-            dispatchGesture(gesture, null, null)
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                val path = Path()
+                path.moveTo(x, y)
+                path.lineTo(x, y)  // ≥2 points required by GestureDescription
+                val stroke = GestureDescription.StrokeDescription(path, 0, 120)
+                val gesture = GestureDescription.Builder()
+                    .addStroke(stroke)
+                    .build()
+                dispatchGesture(gesture, null, null)
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("LumiControl", "injectClick failed", e)
         }
     }
 
     fun injectScroll(x: Float, y: Float, dx: Float, dy: Float) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-            val path = Path()
-            path.moveTo(x, y)
-            path.lineTo(x + dx, y + dy)
-            val stroke = GestureDescription.StrokeDescription(path, 0, 150)
-            val gesture = GestureDescription.Builder()
-                .addStroke(stroke)
-                .build()
-            dispatchGesture(gesture, null, null)
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                val path = Path()
+                val sx = dx * 8
+                val sy = dy * 8
+                path.moveTo(x, y)
+                path.lineTo(x + sx, y + sy)
+                val stroke = GestureDescription.StrokeDescription(path, 0, 50)
+                val gesture = GestureDescription.Builder()
+                    .addStroke(stroke)
+                    .build()
+                dispatchGesture(gesture, null, null)
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("LumiControl", "injectScroll failed", e)
         }
     }
 
     fun injectKey(keyCode: Int) {
-        when (keyCode) {
-            KeyEvent.KEYCODE_BACK -> performGlobalAction(GLOBAL_ACTION_BACK)
-            KeyEvent.KEYCODE_HOME -> performGlobalAction(GLOBAL_ACTION_HOME)
-            KeyEvent.KEYCODE_MENU -> performGlobalAction(GLOBAL_ACTION_RECENTS)
-            KeyEvent.KEYCODE_VOLUME_UP -> adjustVolume(AudioManager.ADJUST_RAISE)
-            KeyEvent.KEYCODE_VOLUME_DOWN -> adjustVolume(AudioManager.ADJUST_LOWER)
-            else -> performNavigationAction(keyCode)
+        try {
+            when (keyCode) {
+                KeyEvent.KEYCODE_BACK -> performGlobalAction(GLOBAL_ACTION_BACK)
+                KeyEvent.KEYCODE_HOME -> performGlobalAction(GLOBAL_ACTION_HOME)
+                KeyEvent.KEYCODE_MENU -> performGlobalAction(GLOBAL_ACTION_RECENTS)
+                KeyEvent.KEYCODE_VOLUME_UP -> adjustVolume(AudioManager.ADJUST_RAISE)
+                KeyEvent.KEYCODE_VOLUME_DOWN -> adjustVolume(AudioManager.ADJUST_LOWER)
+                else -> dispatchKeyEvent(keyCode)
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("LumiControl", "injectKey failed: $keyCode", e)
         }
+    }
+
+    private fun dispatchKeyEvent(keyCode: Int) {
+        val cmds = arrayOf(
+            arrayOf("sh", "-c", "input keyevent $keyCode"),
+            arrayOf("/system/bin/sh", "-c", "input keyevent $keyCode"),
+            arrayOf("sh", "-c", "cmd input keyevent $keyCode"),
+        )
+        for (cmd in cmds) {
+            try {
+                val p = Runtime.getRuntime().exec(cmd)
+                Thread { try { p.inputStream.bufferedReader().readText() } catch (_: Exception) {} }.start()
+                Thread { try { p.errorStream.bufferedReader().readText() } catch (_: Exception) {} }.start()
+                p.waitFor(1, java.util.concurrent.TimeUnit.SECONDS)
+                return
+            } catch (_: Exception) {}
+        }
+        dispatchDpadGesture(keyCode)
+    }
+
+    @Suppress("DEPRECATION")
+    private fun dispatchDpadGesture(keyCode: Int) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N) return
+        val metrics = resources.displayMetrics
+        val cx = metrics.widthPixels / 2f
+        val cy = metrics.heightPixels / 2f
+        val dist = 200f
+        val (tx, ty) = when (keyCode) {
+            KeyEvent.KEYCODE_DPAD_UP -> Pair(cx, cy - dist)
+            KeyEvent.KEYCODE_DPAD_DOWN -> Pair(cx, cy + dist)
+            KeyEvent.KEYCODE_DPAD_LEFT -> Pair(cx - dist, cy)
+            KeyEvent.KEYCODE_DPAD_RIGHT -> Pair(cx + dist, cy)
+            KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER, KeyEvent.KEYCODE_NUMPAD_ENTER -> {
+                performNavigationAction(keyCode)
+                return
+            }
+            else -> return
+        }
+        val path = Path().apply { moveTo(cx, cy); lineTo(tx, ty) }
+        val stroke = GestureDescription.StrokeDescription(path, 0, 150)
+        val gesture = GestureDescription.Builder().addStroke(stroke).build()
+        dispatchGesture(gesture, null, null)
     }
 
     private fun adjustVolume(direction: Int) {
@@ -92,17 +152,13 @@ class ProjectorAccessibilityService : AccessibilityService() {
             val root = rootInActiveWindow ?: return
             val focused = root.findFocus(AccessibilityNodeInfo.FOCUS_INPUT)
                 ?: root
-            val action = when (keyCode) {
-                KeyEvent.KEYCODE_DPAD_UP -> AccessibilityNodeInfo.ACTION_SCROLL_BACKWARD
-                KeyEvent.KEYCODE_DPAD_DOWN -> AccessibilityNodeInfo.ACTION_SCROLL_FORWARD
-                KeyEvent.KEYCODE_DPAD_LEFT -> AccessibilityNodeInfo.ACTION_SCROLL_BACKWARD
-                KeyEvent.KEYCODE_DPAD_RIGHT -> AccessibilityNodeInfo.ACTION_SCROLL_FORWARD
-                KeyEvent.KEYCODE_DPAD_CENTER -> AccessibilityNodeInfo.ACTION_CLICK
+            when (keyCode) {
+                KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER, KeyEvent.KEYCODE_NUMPAD_ENTER -> {
+                    if (!focused.performAction(AccessibilityNodeInfo.ACTION_CLICK)) {
+                        findClickableNode(root)?.performAction(AccessibilityNodeInfo.ACTION_CLICK)
+                    }
+                }
                 else -> return
-            }
-            // Try action on focused node; fall back to finding clickable
-            if (!focused.performAction(action)) {
-                findClickableNode(root)?.performAction(AccessibilityNodeInfo.ACTION_CLICK)
             }
         }
     }

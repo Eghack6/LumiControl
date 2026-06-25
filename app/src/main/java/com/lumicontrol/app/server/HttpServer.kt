@@ -11,6 +11,7 @@ import android.widget.Toast
 import androidx.core.content.FileProvider
 import com.lumicontrol.app.MainActivity
 import com.lumicontrol.app.ProjectorAccessibilityService
+import com.lumicontrol.app.SettingsManager
 import com.google.gson.Gson
 import fi.iki.elonen.NanoHTTPD
 import java.io.File
@@ -22,21 +23,31 @@ class HttpServer(private val ctx: Context, private val port: Int) : NanoHTTPD(po
     private val mainHandler = Handler(Looper.getMainLooper())
 
     override fun serve(session: IHTTPSession): Response {
-        val prev = MainActivity.clientRequestCount.getAndIncrement()
-        if (prev == 0) MainActivity.notifyClientConnected()
-        return when (session.uri) {
-            "/api/status" -> jsonResponse(Response.Status.OK, statusJson())
-            "/api/discover" -> jsonResponse(Response.Status.OK, discoverJson())
-            "/api/touch" -> handleTouch(session)
-            "/api/key" -> if (session.method == Method.POST) handleKey(session) else null
-            "/api/text" -> handleText(session)
-            "/api/reset" -> handleReset(session)
-            "/api/install" -> if (session.method == Method.POST) handleInstall(session) else null
-            "/", "/index.html" -> serveAsset("index.html")
-            "/style.css" -> serveAsset("style.css")
-            "/app.js" -> serveAsset("app.js")
-            else -> serveAsset(session.uri.removePrefix("/"))
-        } ?: newFixedLengthResponse(Response.Status.NOT_FOUND, "text/plain", "404")
+        return try {
+            val prev = MainActivity.clientRequestCount.getAndIncrement()
+            if (prev == 0) MainActivity.notifyClientConnected()
+            when (session.uri) {
+                "/api/status" -> jsonResponse(Response.Status.OK, statusJson())
+                "/api/discover" -> jsonResponse(Response.Status.OK, discoverJson())
+                "/api/touch" -> handleTouch(session)
+                "/api/key" -> if (session.method == Method.POST) handleKey(session) else null
+                "/api/text" -> handleText(session)
+                "/api/reset" -> handleReset(session)
+                "/api/install" -> if (session.method == Method.POST) handleInstall(session) else null
+                "/api/settings" -> handleSettings(session)
+                "/api/cursor-image" -> {
+                    if (session.method == Method.POST) handleCursorImageUpload(session)
+                    else serveCursorImage(session)
+                }
+                "/", "/index.html" -> serveAsset("index.html")
+                "/style.css" -> serveAsset("style.css")
+                "/app.js" -> serveAsset("app.js")
+                else -> serveAsset(session.uri.removePrefix("/"))
+            } ?: newFixedLengthResponse(Response.Status.NOT_FOUND, "text/plain", "404")
+        } catch (e: Exception) {
+            android.util.Log.e("LumiControl", "serve error: ${session.uri}", e)
+            newFixedLengthResponse(Response.Status.INTERNAL_ERROR, "text/plain", "500")
+        }
     }
 
     private fun statusJson(): String {
@@ -150,6 +161,47 @@ class HttpServer(private val ctx: Context, private val port: Int) : NanoHTTPD(po
         } catch (e: Exception) {
             errorResponse("install failed: ${e.message}")
         }
+    }
+
+    private fun handleSettings(session: IHTTPSession): Response {
+        return if (session.method == Method.POST) {
+            val body = parseBody(session)
+            try {
+                val json = gson.toJson(body)
+                val newSettings = gson.fromJson(json, com.lumicontrol.app.AppSettings::class.java)
+                onMain { SettingsManager.update(newSettings) }
+                okResponse()
+            } catch (_: Exception) {
+                errorResponse("invalid settings")
+            }
+        } else {
+            jsonResponse(Response.Status.OK, gson.toJson(SettingsManager.get()))
+        }
+    }
+
+    private fun handleCursorImageUpload(session: IHTTPSession): Response {
+        return try {
+            val files = HashMap<String, String>()
+            session.parseBody(files)
+            val tmpPath = files["image"] ?: return errorResponse("no image file")
+            val tmpFile = File(tmpPath)
+            if (!tmpFile.exists()) return errorResponse("file not found")
+            val cursorDir = File(ctx.filesDir, "cursors")
+            cursorDir.mkdirs()
+            val dest = File(cursorDir, "custom_cursor.png")
+            tmpFile.copyTo(dest, overwrite = true)
+            val s = SettingsManager.get().copy(cursorShape = "custom")
+            onMain { SettingsManager.update(s) }
+            okResponse()
+        } catch (e: Exception) {
+            errorResponse("upload failed: ${e.message}")
+        }
+    }
+
+    private fun serveCursorImage(session: IHTTPSession): Response {
+        val file = File(File(ctx.filesDir, "cursors"), "custom_cursor.png")
+        if (!file.exists()) return newFixedLengthResponse(Response.Status.NOT_FOUND, "text/plain", "404")
+        return newChunkedResponse(Response.Status.OK, "image/png", file.inputStream())
     }
 
     private fun getKeyCode(action: String): Int? = when (action) {

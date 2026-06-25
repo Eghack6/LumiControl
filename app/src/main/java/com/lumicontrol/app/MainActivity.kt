@@ -5,10 +5,12 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
+import android.os.Process
 import android.widget.Button
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
+import java.lang.Thread.UncaughtExceptionHandler
 import androidx.appcompat.app.AppCompatActivity
 import com.lumicontrol.app.widget.QrCodeView
 import java.net.Inet4Address
@@ -30,12 +32,25 @@ class MainActivity : AppCompatActivity() {
 
         /** Called by HttpServer on the very first HTTP request */
         fun notifyClientConnected() {
-            activity?.runOnUiThread { activity?.moveTaskToBack(true) }
+            activity?.runOnUiThread {
+                Toast.makeText(activity, "连接成功！", Toast.LENGTH_SHORT).show()
+                activity?.moveTaskToBack(true)
+            }
         }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        Thread.setDefaultUncaughtExceptionHandler { _, throwable ->
+            try {
+                val msg = "LumiControl崩溃退出\n${throwable.message ?: "未知错误"}"
+                Toast.makeText(this, msg, Toast.LENGTH_LONG).show()
+                Thread.sleep(2500)
+            } catch (_: Exception) {}
+            Process.killProcess(Process.myPid())
+        }
+
         activity = this
         setContentView(R.layout.activity_main)
         startProjectorService()

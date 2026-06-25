@@ -36,8 +36,12 @@ class WebSocketHandler(port: Int) : NanoWSD(port) {
         override fun onException(e: IOException?) {}
 
         override fun onMessage(frame: WebSocketFrame) {
-            val text = frame.textPayload ?: return
-            handleMessage(text)
+            try {
+                val text = frame.textPayload ?: return
+                handleMessage(text)
+            } catch (e: Exception) {
+                android.util.Log.e("LumiControl", "WS onMessage error", e)
+            }
         }
 
         private fun handleMessage(json: String) {

@@ -3,9 +3,10 @@ package com.lumicontrol.app
 import android.app.Service
 import android.content.Intent
 import android.graphics.PixelFormat
-import android.graphics.drawable.GradientDrawable
 import android.os.Build
+import android.os.Handler
 import android.os.IBinder
+import android.os.Looper
 import android.provider.Settings
 import android.view.Gravity
 import android.view.View
@@ -20,19 +21,27 @@ class CursorOverlayService : Service() {
     private var params: WindowManager.LayoutParams? = null
     private var screenW = 1920
     private var screenH = 1080
+    private val inactivityHandler = Handler(Looper.getMainLooper())
+    private val inactivityRunnable = Runnable {
+        cursorVisible = false
+        cursorView?.visibility = View.GONE
+    }
+    private var cursorVisible = true
+    private var currentSize = 56
 
     companion object {
         var instance: CursorOverlayService? = null
-        private const val SIZE = 56
-        private const val EDGE_MARGIN = 30
     }
 
     override fun onCreate() {
         super.onCreate()
         instance = this
+        SettingsManager.init(this)
         wm = getSystemService(WINDOW_SERVICE) as WindowManager
         getScreenSize()
+        currentSize = SettingsManager.get().cursorSize.coerceIn(20, 120)
         createCursor()
+        applyInactivityTimeout()
     }
 
     private fun getScreenSize() {
@@ -45,6 +54,14 @@ class CursorOverlayService : Service() {
         } catch (_: Exception) {}
     }
 
+    private fun applyInactivityTimeout() {
+        inactivityHandler.removeCallbacks(inactivityRunnable)
+        val timeout = SettingsManager.get().inactivityTimeout * 1000L
+        if (cursorVisible) {
+            inactivityHandler.postDelayed(inactivityRunnable, timeout)
+        }
+    }
+
     private fun createCursor() {
         if (cursorView != null) return
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M &&
@@ -54,12 +71,7 @@ class CursorOverlayService : Service() {
         }
 
         val dot = ImageView(this)
-        val shape = GradientDrawable().apply {
-            setShape(GradientDrawable.OVAL)
-            setStroke(2, 0xCCFFFFFF.toInt())
-            setColor(0x66E94560.toInt())
-        }
-        dot.setImageDrawable(shape)
+        dot.setImageDrawable(SettingsManager.buildCursorDrawable(this))
 
         val flags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
@@ -72,75 +84,141 @@ class CursorOverlayService : Service() {
         }
 
         params = WindowManager.LayoutParams(
-            SIZE, SIZE,
+            currentSize, currentSize,
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
                 WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
-            else
-                WindowManager.LayoutParams.TYPE_PHONE,
+            else {
+                @Suppress("DEPRECATION")
+                WindowManager.LayoutParams.TYPE_PHONE
+            },
             flags,
             PixelFormat.TRANSLUCENT
         ).apply {
             gravity = Gravity.TOP or Gravity.START
-            x = screenW / 2 - SIZE / 2
-            y = screenH / 2 - SIZE / 2
+            x = screenW / 2 - currentSize / 2
+            y = screenH / 2 - currentSize / 2
         }
 
         try {
             wm.addView(dot, params)
             cursorView = dot
-            Toast.makeText(this, "鼠标光标已启动", Toast.LENGTH_SHORT).show()
         } catch (_: Exception) {}
     }
 
+    /** Rebuild cursor after settings change */
+    fun applySettings() {
+        val s = SettingsManager.get()
+        currentSize = s.cursorSize.coerceIn(20, 120)
+        val oldCursor = cursorView
+
+        // Create new ImageView
+        val dot = ImageView(this)
+        dot.setImageDrawable(SettingsManager.buildCursorDrawable(this))
+
+        val flags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+            WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or
+            WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS or
+            WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN
+        } else {
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+            WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
+        }
+
+        // Keep position proportional
+        val oldParams = params
+        val oldSize = params?.width ?: currentSize
+        val ratioX = if (oldParams != null && oldSize > 0) oldParams.x.toFloat() / (screenW - oldSize).toFloat() else 0.5f
+        val ratioY = if (oldParams != null && oldSize > 0) oldParams.y.toFloat() / (screenH - oldSize).toFloat() else 0.5f
+
+        params = WindowManager.LayoutParams(
+            currentSize, currentSize,
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
+                WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
+            else {
+                @Suppress("DEPRECATION")
+                WindowManager.LayoutParams.TYPE_PHONE
+            },
+            flags,
+            PixelFormat.TRANSLUCENT
+        ).apply {
+            gravity = Gravity.TOP or Gravity.START
+            val maxX = screenW - currentSize
+            val maxY = screenH - currentSize
+            x = (ratioX * maxX).toInt().coerceIn(0, maxX)
+            y = (ratioY * maxY).toInt().coerceIn(0, maxY)
+        }
+
+        try {
+            wm.addView(dot, params)
+            cursorView = dot
+            if (oldCursor != null) {
+                wm.removeView(oldCursor)
+            }
+        } catch (_: Exception) {
+            cursorView = oldCursor
+        }
+
+        applyInactivityTimeout()
+        showCursor()
+    }
+
+    private fun resetInactivityTimer() {
+        inactivityHandler.removeCallbacks(inactivityRunnable)
+        if (cursorVisible) {
+            val timeout = SettingsManager.get().inactivityTimeout * 1000L
+            inactivityHandler.postDelayed(inactivityRunnable, timeout)
+        }
+    }
+
     fun moveCursor(x: Float, y: Float) {
-        if (cursorView == null || params == null) return
-        val maxX = screenW - SIZE
-        val maxY = screenH - SIZE
-        params!!.x = (x - SIZE / 2).toInt().coerceIn(0, maxX)
-        params!!.y = (y - SIZE / 2).toInt().coerceIn(0, maxY)
-        try { wm.updateViewLayout(cursorView, params) } catch (_: Exception) {}
-        updateVisibility(x, y)
+        try {
+            if (cursorView == null || params == null) return
+            getScreenSize()
+            val maxX = screenW - currentSize
+            val maxY = screenH - currentSize
+            params!!.x = (x - currentSize / 2f).toInt().coerceIn(0, maxX)
+            params!!.y = (y - currentSize / 2f).toInt().coerceIn(0, maxY)
+            wm.updateViewLayout(cursorView, params)
+            showCursor()
+        } catch (_: Exception) {}
     }
 
-    /** Move cursor by delta from current position */
     fun moveCursorBy(dx: Float, dy: Float) {
-        if (cursorView == null || params == null) return
-        val maxX = screenW - SIZE
-        val maxY = screenH - SIZE
-        params!!.x = (params!!.x + dx).toInt().coerceIn(0, maxX)
-        params!!.y = (params!!.y + dy).toInt().coerceIn(0, maxY)
-        try { wm.updateViewLayout(cursorView, params) } catch (_: Exception) {}
-        updateVisibility((params!!.x + SIZE / 2).toFloat(), (params!!.y + SIZE / 2).toFloat())
+        try {
+            if (cursorView == null || params == null) return
+            getScreenSize()
+            val maxX = screenW - currentSize
+            val maxY = screenH - currentSize
+            params!!.x = (params!!.x + dx).toInt().coerceIn(0, maxX)
+            params!!.y = (params!!.y + dy).toInt().coerceIn(0, maxY)
+            wm.updateViewLayout(cursorView, params)
+            showCursor()
+        } catch (_: Exception) {}
     }
 
-    /** Hide cursor when near any screen edge */
-    private fun updateVisibility(cx: Float, cy: Float) {
-        val nearEdge = cx <= EDGE_MARGIN || cx >= screenW - EDGE_MARGIN ||
-                       cy <= EDGE_MARGIN || cy >= screenH - EDGE_MARGIN
-        cursorView?.visibility = if (nearEdge) View.GONE else View.VISIBLE
-    }
-
-    /** Show cursor */
     fun showCursor() {
+        cursorVisible = true
         cursorView?.visibility = View.VISIBLE
+        resetInactivityTimer()
     }
 
-    /** Reset cursor to screen center and ensure it's visible */
     fun resetCursor() {
         createCursor()
         if (params == null) return
-        params!!.x = screenW / 2 - SIZE / 2
-        params!!.y = screenH / 2 - SIZE / 2
+        getScreenSize()
+        params!!.x = screenW / 2 - currentSize / 2
+        params!!.y = screenH / 2 - currentSize / 2
         try {
             cursorView?.let { wm.updateViewLayout(it, params) }
             showCursor()
         } catch (_: Exception) {}
     }
 
-    /** Get current cursor center position */
     fun getCursorPosition(): Pair<Float, Float> {
+        getScreenSize()
         val p = params ?: return Pair(screenW / 2f, screenH / 2f)
-        return Pair((p.x + SIZE / 2).toFloat(), (p.y + SIZE / 2).toFloat())
+        return Pair((p.x + currentSize / 2f).toFloat(), (p.y + currentSize / 2f).toFloat())
     }
 
     fun retry() {
@@ -149,6 +227,7 @@ class CursorOverlayService : Service() {
 
     override fun onDestroy() {
         instance = null
+        inactivityHandler.removeCallbacks(inactivityRunnable)
         cursorView?.let { try { wm.removeView(it) } catch (_: Exception) {} }
         cursorView = null
         super.onDestroy()

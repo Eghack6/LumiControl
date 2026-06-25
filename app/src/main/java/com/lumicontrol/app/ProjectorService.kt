@@ -60,9 +60,21 @@ class ProjectorService : Service() {
     }
 
     private fun startServers() {
-        httpServer = HttpServer(this, MainActivity.HTTP_PORT).apply { start() }
-        webSocketHandler = WebSocketHandler(MainActivity.WS_PORT).apply { start() }
-        udpBroadcaster = UdpBroadcaster(this, MainActivity.UDP_PORT).apply { start() }
+        try {
+            httpServer = HttpServer(this, MainActivity.HTTP_PORT).apply { start() }
+        } catch (e: Exception) {
+            android.util.Log.e("LumiControl", "HTTP server start failed", e)
+        }
+        try {
+            webSocketHandler = WebSocketHandler(MainActivity.WS_PORT).apply { start() }
+        } catch (e: Exception) {
+            android.util.Log.e("LumiControl", "WebSocket server start failed", e)
+        }
+        try {
+            udpBroadcaster = UdpBroadcaster(this, MainActivity.UDP_PORT).apply { start() }
+        } catch (e: Exception) {
+            android.util.Log.e("LumiControl", "UDP broadcaster start failed", e)
+        }
     }
 
     override fun onDestroy() {
