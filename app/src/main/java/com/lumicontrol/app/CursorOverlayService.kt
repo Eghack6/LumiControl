@@ -92,16 +92,20 @@ class CursorOverlayService : Service() {
 
     fun moveCursor(x: Float, y: Float) {
         if (cursorView == null || params == null) return
-        params!!.x = (x - SIZE / 2).toInt()
-        params!!.y = (y - SIZE / 2).toInt()
+        val maxX = screenW - SIZE
+        val maxY = screenH - SIZE
+        params!!.x = (x - SIZE / 2).toInt().coerceIn(0, maxX)
+        params!!.y = (y - SIZE / 2).toInt().coerceIn(0, maxY)
         try { wm.updateViewLayout(cursorView, params) } catch (_: Exception) {}
     }
 
     /** Move cursor by delta from current position */
     fun moveCursorBy(dx: Float, dy: Float) {
         if (cursorView == null || params == null) return
-        params!!.x = (params!!.x + dx).toInt()
-        params!!.y = (params!!.y + dy).toInt()
+        val maxX = screenW - SIZE
+        val maxY = screenH - SIZE
+        params!!.x = (params!!.x + dx).toInt().coerceIn(0, maxX)
+        params!!.y = (params!!.y + dy).toInt().coerceIn(0, maxY)
         try { wm.updateViewLayout(cursorView, params) } catch (_: Exception) {}
     }
 

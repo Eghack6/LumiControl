@@ -83,8 +83,13 @@ class HttpServer(private val ctx: Context, private val port: Int) : NanoHTTPD(po
             val svc = ProjectorAccessibilityService.instance
             if (svc != null) ok = svc.injectText(text)
         }
-        showToast(if (ok) "文字已发送: $text" else "文字发送失败，没有找到输入框焦点")
-        return if (ok) okResponse() else errorResponse("没有找到输入框")
+        if (ok) {
+            showToast("文字已发送: $text")
+            return okResponse()
+        }
+        // injectText always copies to clipboard — even if window injection failed
+        showToast("文字已复制到剪贴板，请长按输入框粘贴")
+        return okResponse()
     }
 
     private fun handleTouch(session: IHTTPSession): Response {
