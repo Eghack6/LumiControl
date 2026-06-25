@@ -8,6 +8,7 @@ import android.os.Build
 import android.os.IBinder
 import android.provider.Settings
 import android.view.Gravity
+import android.view.View
 import android.view.WindowManager
 import android.widget.ImageView
 import android.widget.Toast
@@ -23,6 +24,7 @@ class CursorOverlayService : Service() {
     companion object {
         var instance: CursorOverlayService? = null
         private const val SIZE = 56
+        private const val EDGE_MARGIN = 30
     }
 
     override fun onCreate() {
@@ -97,6 +99,7 @@ class CursorOverlayService : Service() {
         params!!.x = (x - SIZE / 2).toInt().coerceIn(0, maxX)
         params!!.y = (y - SIZE / 2).toInt().coerceIn(0, maxY)
         try { wm.updateViewLayout(cursorView, params) } catch (_: Exception) {}
+        updateVisibility(x, y)
     }
 
     /** Move cursor by delta from current position */
@@ -107,6 +110,31 @@ class CursorOverlayService : Service() {
         params!!.x = (params!!.x + dx).toInt().coerceIn(0, maxX)
         params!!.y = (params!!.y + dy).toInt().coerceIn(0, maxY)
         try { wm.updateViewLayout(cursorView, params) } catch (_: Exception) {}
+        updateVisibility((params!!.x + SIZE / 2).toFloat(), (params!!.y + SIZE / 2).toFloat())
+    }
+
+    /** Hide cursor when near any screen edge */
+    private fun updateVisibility(cx: Float, cy: Float) {
+        val nearEdge = cx <= EDGE_MARGIN || cx >= screenW - EDGE_MARGIN ||
+                       cy <= EDGE_MARGIN || cy >= screenH - EDGE_MARGIN
+        cursorView?.visibility = if (nearEdge) View.GONE else View.VISIBLE
+    }
+
+    /** Show cursor */
+    fun showCursor() {
+        cursorView?.visibility = View.VISIBLE
+    }
+
+    /** Reset cursor to screen center and ensure it's visible */
+    fun resetCursor() {
+        createCursor()
+        if (params == null) return
+        params!!.x = screenW / 2 - SIZE / 2
+        params!!.y = screenH / 2 - SIZE / 2
+        try {
+            cursorView?.let { wm.updateViewLayout(it, params) }
+            showCursor()
+        } catch (_: Exception) {}
     }
 
     /** Get current cursor center position */

@@ -30,6 +30,7 @@ class HttpServer(private val ctx: Context, private val port: Int) : NanoHTTPD(po
             "/api/touch" -> handleTouch(session)
             "/api/key" -> if (session.method == Method.POST) handleKey(session) else null
             "/api/text" -> handleText(session)
+            "/api/reset" -> handleReset(session)
             "/api/install" -> if (session.method == Method.POST) handleInstall(session) else null
             "/", "/index.html" -> serveAsset("index.html")
             "/style.css" -> serveAsset("style.css")
@@ -89,6 +90,12 @@ class HttpServer(private val ctx: Context, private val port: Int) : NanoHTTPD(po
         }
         // injectText always copies to clipboard — even if window injection failed
         showToast("文字已复制到剪贴板，请长按输入框粘贴")
+        return okResponse()
+    }
+
+    private fun handleReset(session: IHTTPSession): Response {
+        onMain { com.lumicontrol.app.CursorOverlayService.instance?.resetCursor() }
+        showToast("光标已复位")
         return okResponse()
     }
 

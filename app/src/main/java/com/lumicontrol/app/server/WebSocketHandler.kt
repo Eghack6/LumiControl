@@ -79,6 +79,9 @@ class WebSocketHandler(port: Int) : NanoWSD(port) {
                             val keyCode = getKeyCode(action) ?: return@onMain
                             svc?.injectKey(keyCode)
                         }
+                        "reset" -> {
+                            cursor?.resetCursor()
+                        }
                     }
                 }
             } catch (_: Exception) {}

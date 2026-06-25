@@ -154,10 +154,18 @@ document.addEventListener('keydown', (e) => {
   if (a) { e.preventDefault(); sendAction(a); }
 });
 
-// Delegate key buttons
+// Delegate key buttons and action buttons
 document.addEventListener('click', (e) => {
   const btn = e.target.closest('[data-key]');
   if (btn) sendAction(btn.dataset.key);
+  const act = e.target.closest('[data-action]');
+  if (act) {
+    const action = act.dataset.action;
+    if (action === 'reset') {
+      wsSend({ type: 'reset' });
+      toast('✔ 光标已复位');
+    }
+  }
 });
 
 // ---- Status polling ----

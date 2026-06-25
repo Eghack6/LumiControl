@@ -236,7 +236,7 @@ main {
 /* ---- action buttons ---- */
 .actions {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   gap: 6px;
 }
 
@@ -254,6 +254,12 @@ main {
 .actions button:active {
   background: var(--accent-dim);
   color: var(--text);
+}
+
+.actions .btn-reset {
+  background: var(--accent-dim);
+  color: var(--accent);
+  font-weight: 600;
 }
 
 /* ---- volume ---- */
