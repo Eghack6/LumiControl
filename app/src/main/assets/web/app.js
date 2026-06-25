@@ -110,11 +110,12 @@ touchpad.addEventListener('touchend', () => { cursor.style.display = 'none'; });
 touchpad.addEventListener('touchcancel', () => { cursor.style.display = 'none'; });
 
 // Click button
-clickBtn.addEventListener('click', () => {
+clickBtn.addEventListener('touchend', (e) => {
+  e.preventDefault();
   wsSend({ type: 'click', x: cursorX, y: cursorY });
 });
-clickBtn.addEventListener('touchstart', (e) => {
-  e.stopPropagation();
+clickBtn.addEventListener('click', () => {
+  wsSend({ type: 'click', x: cursorX, y: cursorY });
 });
 
 // Mouse support (for desktop testing)

@@ -47,7 +47,8 @@ class ProjectorAccessibilityService : AccessibilityService() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
             val path = Path()
             path.moveTo(x, y)
-            val stroke = GestureDescription.StrokeDescription(path, 0, 80)
+            path.lineTo(x, y)  // ≥2 points required by GestureDescription
+            val stroke = GestureDescription.StrokeDescription(path, 0, 120)
             val gesture = GestureDescription.Builder()
                 .addStroke(stroke)
                 .build()
