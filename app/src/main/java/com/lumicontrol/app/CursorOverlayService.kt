@@ -46,6 +46,9 @@ class CursorOverlayService : Service() {
         currentSize = SettingsManager.get().cursorSize.coerceIn(20, 500)
         createCursor()
         applyInactivityTimeout()
+        // Rebuild cursor to clear any WindowManager state that may interfere
+        // with dispatchGesture (observed on certain Android versions)
+        applySettings()
     }
 
     private fun getScreenSize() {
