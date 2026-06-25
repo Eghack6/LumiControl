@@ -2,6 +2,9 @@ const HOST = window.location.hostname;
 const HTTP_PORT = 4560;
 const WS_PORT = 4561;
 
+// Sensitivity multiplier for cursor movement
+const SENSITIVITY = 2.5;
+
 // ---- WebSocket ----
 let ws = null;
 let wsReconnectTimer = null;
@@ -57,10 +60,13 @@ function sendText() {
   const input = document.getElementById('textInput');
   const text = input.value.trim();
   if (!text) return;
-  apiPost('/text', { text }).then(r => {
-    if (!r.ok) toast(r.error || '发送失败');
-    else { toast('✔ 已发送'); input.value = ''; }
-  });
+  fetch(`http://${HOST}:${HTTP_PORT}/api/text?text=${encodeURIComponent(text)}`)
+    .then(r => r.json())
+    .then(r => {
+      if (!r.ok) toast(r.error || '发送失败');
+      else { toast('✔ 已发送'); input.value = ''; }
+    })
+    .catch(() => toast('网络错误'));
 }
 
 document.getElementById('sendBtn').addEventListener('click', sendText);
@@ -98,8 +104,8 @@ touchpad.addEventListener('touchmove', (e) => {
   const rect = touchpad.getBoundingClientRect();
   const cx = t.clientX - rect.left;
   const cy = t.clientY - rect.top;
-  cursorX += cx - lastTouchX;
-  cursorY += cy - lastTouchY;
+  cursorX += (cx - lastTouchX) * SENSITIVITY;
+  cursorY += (cy - lastTouchY) * SENSITIVITY;
   lastTouchX = cx;
   lastTouchY = cy;
   showLocalCursor(cx, cy);
@@ -124,8 +130,8 @@ touchpad.addEventListener('mousemove', (e) => {
   const cx = e.clientX - rect.left;
   const cy = e.clientY - rect.top;
   if (e.buttons === 1) {
-    cursorX += cx - lastTouchX;
-    cursorY += cy - lastTouchY;
+    cursorX += (cx - lastTouchX) * SENSITIVITY;
+    cursorY += (cy - lastTouchY) * SENSITIVITY;
     wsSend({ type: 'pos', x: cursorX, y: cursorY });
   }
   lastTouchX = cx;

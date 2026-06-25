@@ -29,7 +29,7 @@ class HttpServer(private val ctx: Context, private val port: Int) : NanoHTTPD(po
             "/api/discover" -> jsonResponse(Response.Status.OK, discoverJson())
             "/api/touch" -> handleTouch(session)
             "/api/key" -> if (session.method == Method.POST) handleKey(session) else null
-            "/api/text" -> if (session.method == Method.POST) handleText(session) else null
+            "/api/text" -> handleText(session)
             "/api/install" -> if (session.method == Method.POST) handleInstall(session) else null
             "/", "/index.html" -> serveAsset("index.html")
             "/style.css" -> serveAsset("style.css")
@@ -74,8 +74,10 @@ class HttpServer(private val ctx: Context, private val port: Int) : NanoHTTPD(po
     }
 
     private fun handleText(session: IHTTPSession): Response {
-        val body = parseBody(session)
-        val text = body["text"] as? String ?: return errorResponse("missing text")
+        // Support both GET (query param) and POST (JSON body)
+        val text = session.parameters["text"]?.firstOrNull()
+            ?: (parseBody(session)["text"] as? String)
+            ?: return errorResponse("missing text")
         var ok = false
         onMain {
             val svc = ProjectorAccessibilityService.instance
