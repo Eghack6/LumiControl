@@ -83,6 +83,14 @@ class WebSocketHandler(port: Int) : NanoWSD(port) {
                             val keyCode = getKeyCode(action) ?: return@onMain
                             svc?.injectKey(keyCode)
                         }
+                        "longpress_start" -> {
+                            val cx = x ?: cursor?.getCursorPosition()?.first ?: return@onMain
+                            val cy = y ?: cursor?.getCursorPosition()?.second ?: return@onMain
+                            svc?.startLongPress(cx, cy)
+                        }
+                        "longpress_stop" -> {
+                            svc?.stopLongPress()
+                        }
                         "reset" -> {
                             cursor?.resetCursor()
                         }

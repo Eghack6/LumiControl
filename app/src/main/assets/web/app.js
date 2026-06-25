@@ -27,6 +27,10 @@ function wsSend(data) {
     touchCmd('click', cursorX, cursorY);
   } else if (data.type === 'move') {
     touchCmd('pos', cursorX, cursorY);
+  } else if (data.type === 'longpress_start') {
+    touchCmd('longpress_start', cursorX, cursorY);
+  } else if (data.type === 'longpress_stop') {
+    touchCmd('longpress_stop', cursorX, cursorY);
   } else {
     touchCmd(data.type, data.x, data.y, data.dx, data.dy);
   }
@@ -372,6 +376,9 @@ let touchStartX = 0, touchStartY = 0;
 let isButtonTouch = false;
 let touchMoved = false;
 let cursorVisible = false;
+let longPressTimer = null;
+let isLongPressing = false;
+const LONGPRESS_THRESHOLD = 300;
 
 function showLocalCursor(clientX, clientY) {
   if (!cursorVisible) {
@@ -388,6 +395,7 @@ touchpad.addEventListener('touchstart', (e) => {
   }
   isButtonTouch = false;
   touchMoved = false;
+  isLongPressing = false;
   const t = e.touches[0];
   const rect = touchpad.getBoundingClientRect();
   lastTouchX = t.clientX - rect.left;
@@ -395,6 +403,13 @@ touchpad.addEventListener('touchstart', (e) => {
   touchStartX = lastTouchX;
   touchStartY = lastTouchY;
   showLocalCursor(lastTouchX, lastTouchY);
+  clearTimeout(longPressTimer);
+  longPressTimer = setTimeout(() => {
+    if (!touchMoved) {
+      isLongPressing = true;
+      wsSend({ type: 'longpress_start', x: cursorX, y: cursorY });
+    }
+  }, LONGPRESS_THRESHOLD);
 });
 
 touchpad.addEventListener('touchmove', (e) => {
@@ -418,7 +433,14 @@ touchpad.addEventListener('touchmove', (e) => {
 touchpad.addEventListener('touchend', () => {
   cursor.style.display = 'none';
   cursorVisible = false;
-  if (isButtonTouch || touchMoved) return;
+  clearTimeout(longPressTimer);
+  if (isButtonTouch) return;
+  if (isLongPressing) {
+    wsSend({ type: 'longpress_stop' });
+    isLongPressing = false;
+    return;
+  }
+  if (touchMoved) return;
   const tapEnabled = cachedSettings ? cachedSettings.tapToClick : true;
   if (tapEnabled) {
     wsSend({ type: 'click' });
@@ -426,7 +448,15 @@ touchpad.addEventListener('touchend', () => {
   }
 });
 
-touchpad.addEventListener('touchcancel', () => { cursor.style.display = 'none'; cursorVisible = false; });
+touchpad.addEventListener('touchcancel', () => {
+  cursor.style.display = 'none';
+  cursorVisible = false;
+  clearTimeout(longPressTimer);
+  if (isLongPressing) {
+    wsSend({ type: 'longpress_stop' });
+    isLongPressing = false;
+  }
+});
 
 // Mouse tap-to-click on touchpad
 let mouseDown = false;
@@ -434,11 +464,19 @@ touchpad.addEventListener('mousedown', (e) => {
   if (e.target.closest('button')) return;
   mouseDown = true;
   touchMoved = false;
+  isLongPressing = false;
   const rect = touchpad.getBoundingClientRect();
   lastTouchX = e.clientX - rect.left;
   lastTouchY = e.clientY - rect.top;
   touchStartX = lastTouchX;
   touchStartY = lastTouchY;
+  clearTimeout(longPressTimer);
+  longPressTimer = setTimeout(() => {
+    if (!touchMoved) {
+      isLongPressing = true;
+      wsSend({ type: 'longpress_start', x: cursorX, y: cursorY });
+    }
+  }, LONGPRESS_THRESHOLD);
 });
 
 touchpad.addEventListener('mousemove', (e) => {
@@ -459,6 +497,13 @@ touchpad.addEventListener('mousemove', (e) => {
 
 touchpad.addEventListener('mouseup', (e) => {
   if (e.target.closest('button')) return;
+  clearTimeout(longPressTimer);
+  if (isLongPressing) {
+    wsSend({ type: 'longpress_stop' });
+    isLongPressing = false;
+    mouseDown = false;
+    return;
+  }
   if (mouseDown && !touchMoved) {
     const tapEnabled = cachedSettings ? cachedSettings.tapToClick : true;
     if (tapEnabled) {
