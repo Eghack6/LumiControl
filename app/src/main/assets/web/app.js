@@ -600,7 +600,6 @@ function pollStatus() {
         if (s.screenW && s.screenH) {
           cursorX = s.screenW / 2;
           cursorY = s.screenH / 2;
-          wsSend({ type: 'pos', x: cursorX, y: cursorY });
         }
       } else {
         dot.classList.add('warn');
