@@ -74,7 +74,15 @@ function sendText() {
     .catch(() => toast('网络错误'));
 }
 
+function pasteText() {
+  navigator.clipboard.readText().then(text => {
+    document.getElementById('textInput').value = text;
+    toast('✔ 已粘贴');
+  }).catch(() => toast('无法读取剪贴板'));
+}
+
 document.getElementById('sendBtn').addEventListener('click', sendText);
+document.getElementById('pasteBtn').addEventListener('click', pasteText);
 document.getElementById('textInput').addEventListener('keydown', (e) => {
   if (e.key === 'Enter') sendText();
 });
@@ -291,11 +299,6 @@ function renderSettings(container, s) {
           <span class="toggle-track"></span>
         </label>
       </div>
-
-      <div class="setting-row">
-        <span class="setting-name">导出日志</span>
-        <a class="setting-btn" href="http://${HOST}:${HTTP_PORT}/api/log" target="_blank">查看</a>
-      </div>
     </div>
   `;
 
@@ -419,6 +422,7 @@ function showLocalCursor(clientX, clientY) {
 }
 
 touchpad.addEventListener('touchstart', (e) => {
+  if (e.target.closest('.joystick')) return;
   if (e.target.closest('button')) {
     isButtonTouch = true;
     return;
@@ -453,11 +457,12 @@ touchpad.addEventListener('touchmove', (e) => {
   wsSend({ type: 'move', dx, dy });
 });
 
-touchpad.addEventListener('touchend', () => {
+touchpad.addEventListener('touchend', (e) => {
   document.querySelector('.touchpad-bottom')?.classList.remove('hidden');
   cursor.style.display = 'none';
   cursorVisible = false;
   if (isButtonTouch || touchMoved) return;
+  if (e.target.closest('.joystick')) return;
   const tapEnabled = cachedSettings ? cachedSettings.tapToClick : true;
   if (tapEnabled) {
     wsSend({ type: 'click' });
@@ -500,6 +505,7 @@ touchpad.addEventListener('mousemove', (e) => {
 touchpad.addEventListener('mouseup', (e) => {
   document.querySelector('.touchpad-bottom')?.classList.remove('hidden');
   if (e.target.closest('button')) return;
+  if (e.target.closest('.joystick')) return;
   if (mouseDown && !touchMoved) {
     const tapEnabled = cachedSettings ? cachedSettings.tapToClick : true;
     if (tapEnabled) {
@@ -606,6 +612,8 @@ if (joystick && joystickKnob) {
     document.addEventListener('mousemove', onMove);
     document.addEventListener('mouseup', onUp);
   });
+
+  joystick.addEventListener('mouseup', (e) => { e.stopPropagation(); });
 }
 
 // Keyboard shortcuts

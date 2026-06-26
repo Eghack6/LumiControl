@@ -45,33 +45,43 @@
     <!-- Page 2: Controls -->
     <section id="page-controls" class="page">
       <div class="controls-scroll">
-        <div class="actions-grid">
-          <button data-key="home">主页</button>
-          <button data-key="back">返回</button>
-          <button data-key="menu">菜单</button>
-          <button data-key="settings">设置</button>
-          <button class="btn-reset" data-action="reset">复位</button>
-        </div>
 
-        <div class="volume-row">
-          <button data-key="volume_down">− 音量</button>
-          <button data-key="volume_up">音量 +</button>
-        </div>
-
-        <div class="input-group">
-          <input type="text" id="textInput" placeholder="输入文字..." autocomplete="off">
-          <button id="sendBtn">发送</button>
-        </div>
-
-        <div class="upload-section">
-          <div class="upload-label">安装 APK</div>
-          <div class="upload-zone" id="uploadZone">
-            <span>拖拽 APK 到此处，或点击选择文件</span>
-            <input type="file" id="fileInput" accept=".apk" hidden>
+        <div class="control-card">
+          <div class="actions-grid">
+            <button data-key="home">主页</button>
+            <button data-key="back">返回</button>
+            <button data-key="menu">菜单</button>
+            <button data-key="settings">设置</button>
+            <button class="btn-reset" data-action="reset">复位</button>
           </div>
-          <div id="uploadProgress" class="upload-progress" hidden>
-            <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
-            <span id="uploadStatus">上传中...</span>
+        </div>
+
+        <div class="control-card">
+          <div class="volume-row">
+            <button data-key="volume_down">− 音量</button>
+            <button data-key="volume_up">音量 +</button>
+          </div>
+        </div>
+
+        <div class="control-card">
+          <div class="input-group">
+            <input type="text" id="textInput" placeholder="输入文字..." autocomplete="off">
+            <button id="pasteBtn" class="input-btn" aria-label="粘贴">粘贴</button>
+            <button id="sendBtn">发送</button>
+          </div>
+        </div>
+
+        <div class="control-card">
+          <div class="upload-section">
+            <div class="upload-label">安装 APK</div>
+            <div class="upload-zone" id="uploadZone">
+              <span>拖拽 APK 到此处，或点击选择文件</span>
+              <input type="file" id="fileInput" accept=".apk" hidden>
+            </div>
+            <div id="uploadProgress" class="upload-progress" hidden>
+              <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+              <span id="uploadStatus">上传中...</span>
+            </div>
           </div>
         </div>
       </div>
