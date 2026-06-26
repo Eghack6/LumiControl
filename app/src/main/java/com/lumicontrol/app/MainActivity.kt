@@ -61,7 +61,14 @@ class MainActivity : AppCompatActivity() {
         checkOverlayPermission()
         updateStatus()
         findViewById<Button>(R.id.btnAccessibility).setOnClickListener {
-            startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+            try {
+                startActivity(
+                    Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                )
+            } catch (e: Exception) {
+                Toast.makeText(this, "无法打开无障碍设置", Toast.LENGTH_SHORT).show()
+            }
         }
     }
 
@@ -101,11 +108,15 @@ class MainActivity : AppCompatActivity() {
                     .setTitle("需要悬浮窗权限")
                     .setMessage("LumiControl 需要悬浮窗权限来显示鼠标指针。是否前往设置开启？")
                     .setPositiveButton("去设置") { _, _ ->
-                        val intent = Intent(
-                            Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                            Uri.parse("package:$packageName")
-                        )
-                        startActivity(intent)
+                        try {
+                            val intent = Intent(
+                                Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                                Uri.parse("package:$packageName")
+                            ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                            startActivity(intent)
+                        } catch (e: Exception) {
+                            Toast.makeText(this, "无法打开悬浮窗权限设置", Toast.LENGTH_SHORT).show()
+                        }
                     }
                     .setNegativeButton("稍后", null)
                     .show()

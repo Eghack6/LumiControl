@@ -13,6 +13,8 @@ import android.view.View
 import android.view.WindowManager
 import android.widget.ImageView
 import android.widget.Toast
+import com.lumicontrol.app.widget.TrajectoryOverlayView
+import java.io.File
 
 class CursorOverlayService : Service() {
 
@@ -28,6 +30,16 @@ class CursorOverlayService : Service() {
     }
     private var cursorVisible = true
     private var currentSize = 56
+    private var trajectoryView: TrajectoryOverlayView? = null
+    private var trajectoryParams: WindowManager.LayoutParams? = null
+    private val trajectoryCleanup = Runnable { removeTrajectory() }
+
+    private fun removeTrajectory() {
+        trajectoryView?.let { try { wm.removeView(it) } catch (_: Exception) {} }
+        trajectoryView = null
+        trajectoryParams = null
+    }
+
 
     companion object {
         var instance: CursorOverlayService? = null
@@ -108,6 +120,8 @@ class CursorOverlayService : Service() {
             y = screenH / 2 - currentSize / 2
         }
 
+        restorePosition()
+
         try {
             wm.addView(dot, params)
             cursorView = dot
@@ -118,9 +132,14 @@ class CursorOverlayService : Service() {
     fun applySettings() {
         val s = SettingsManager.get()
         currentSize = s.cursorSize.coerceIn(20, 500)
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M &&
+            !Settings.canDrawOverlays(this)) {
+            return
+        }
+
         val oldCursor = cursorView
 
-        // Create new ImageView
         val dot = ImageView(this)
         dot.setImageDrawable(SettingsManager.buildCursorDrawable(this))
 
@@ -134,7 +153,6 @@ class CursorOverlayService : Service() {
             WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
         }
 
-        // Keep position proportional
         val oldParams = params
         val oldSize = params?.width ?: currentSize
         val ratioX = if (oldParams != null && oldSize > 0) oldParams.x.toFloat() / (screenW - oldSize).toFloat() else 0.5f
@@ -170,6 +188,7 @@ class CursorOverlayService : Service() {
 
         applyInactivityTimeout()
         showCursor()
+        savePosition()
     }
 
     private fun resetInactivityTimer() {
@@ -190,6 +209,7 @@ class CursorOverlayService : Service() {
             params!!.y = (y - currentSize / 2f).toInt().coerceIn(0, maxY)
             wm.updateViewLayout(cursorView, params)
             showCursor()
+            savePosition()
         } catch (_: Exception) {}
     }
 
@@ -203,7 +223,35 @@ class CursorOverlayService : Service() {
             params!!.y = (params!!.y + dy).toInt().coerceIn(0, maxY)
             wm.updateViewLayout(cursorView, params)
             showCursor()
+            savePosition()
         } catch (_: Exception) {}
+    }
+
+    private fun posFile() = File(applicationContext.filesDir, "cursor_pos")
+
+    private fun savePosition() {
+        val p = params ?: return
+        try {
+            posFile().writeText("${p.x},${p.y}")
+        } catch (_: Exception) {}
+    }
+
+    private fun loadPosition(): Pair<Int, Int>? {
+        return try {
+            val f = posFile()
+            if (!f.exists()) return null
+            val parts = f.readText().split(",")
+            Pair(parts[0].toInt(), parts[1].toInt())
+        } catch (_: Exception) { null }
+    }
+
+    private fun restorePosition() {
+        val saved = loadPosition() ?: return
+        getScreenSize()
+        val maxX = screenW - currentSize
+        val maxY = screenH - currentSize
+        params?.x = saved.first.coerceIn(0, maxX)
+        params?.y = saved.second.coerceIn(0, maxY)
     }
 
     fun showCursor() {
@@ -221,6 +269,7 @@ class CursorOverlayService : Service() {
         try {
             cursorView?.let { wm.updateViewLayout(it, params) }
             showCursor()
+            savePosition()
         } catch (_: Exception) {}
     }
 
@@ -234,11 +283,51 @@ class CursorOverlayService : Service() {
         createCursor()
     }
 
+    fun showSwipePath(x1: Float, y1: Float, x2: Float, y2: Float, duration: Long) {
+        if (!SettingsManager.get().showTrajectory) return
+        inactivityHandler.removeCallbacks(trajectoryCleanup)
+        if (trajectoryView == null) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M &&
+                !Settings.canDrawOverlays(this)) return
+            val view = TrajectoryOverlayView(this)
+            view.onEmpty = { inactivityHandler.post(trajectoryCleanup) }
+            val flags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or
+                WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS or
+                WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN
+            } else {
+                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
+            }
+            val lp = WindowManager.LayoutParams(
+                WindowManager.LayoutParams.MATCH_PARENT,
+                WindowManager.LayoutParams.MATCH_PARENT,
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
+                    WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
+                else {
+                    @Suppress("DEPRECATION")
+                    WindowManager.LayoutParams.TYPE_PHONE
+                },
+                flags,
+                PixelFormat.TRANSLUCENT
+            )
+            try {
+                wm.addView(view, lp)
+                trajectoryView = view
+                trajectoryParams = lp
+            } catch (_: Exception) { return }
+        }
+        trajectoryView?.showSwipe(x1, y1, x2, y2, duration)
+    }
+
     override fun onDestroy() {
         instance = null
         inactivityHandler.removeCallbacks(inactivityRunnable)
+        inactivityHandler.removeCallbacks(trajectoryCleanup)
         cursorView?.let { try { wm.removeView(it) } catch (_: Exception) {} }
         cursorView = null
+        removeTrajectory()
         super.onDestroy()
     }
 

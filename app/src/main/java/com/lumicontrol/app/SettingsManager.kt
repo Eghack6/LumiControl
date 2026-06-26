@@ -10,13 +10,14 @@ import android.graphics.Path
 import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.Drawable
 import android.graphics.drawable.GradientDrawable
+import android.os.Build
 import com.google.gson.Gson
 import java.io.File
 
 data class AppSettings(
-    val cursorColor: String = "#6366f1",
+    val cursorColor: String = "#FF9494",
     val cursorSize: Int = 56,
-    val cursorShape: String = "circle",
+    val cursorShape: String = "dot",
     val cursorOpacity: Int = 100,
     val inactivityTimeout: Int = 5,
     val sensitivity: Float = 2.5f,
@@ -27,7 +28,10 @@ data class AppSettings(
     val invertHorizontal: Boolean = false,
     val vibrationFeedback: Boolean = false,
     val keySound: Boolean = false,
-    val autoStart: Boolean = true
+    val autoStart: Boolean = true,
+    val scrollInterval: Int = 150,
+    val scrollDistance: Int = 25,
+    val showTrajectory: Boolean = false
 )
 
 object SettingsManager {
@@ -39,6 +43,14 @@ object SettingsManager {
         settingsFile = File(ctx.filesDir, "settings.json")
         File(ctx.filesDir, "cursors").mkdirs()
         load()
+        if (!settingsFile!!.exists()) {
+            currentSettings = if (Build.VERSION.SDK_INT > Build.VERSION_CODES.P) {
+                AppSettings(scrollInterval = 70, scrollDistance = 14)
+            } else {
+                AppSettings(scrollInterval = 30, scrollDistance = 50)
+            }
+            save()
+        }
     }
 
     fun get(): AppSettings = currentSettings

@@ -20,7 +20,6 @@ class WebSocketHandler(port: Int) : NanoWSD(port) {
         return TouchWebSocket(handshake)
     }
 
-    /** Run task on main thread without blocking */
     private fun onMain(task: () -> Unit) {
         if (Looper.myLooper() == Looper.getMainLooper()) {
             task()

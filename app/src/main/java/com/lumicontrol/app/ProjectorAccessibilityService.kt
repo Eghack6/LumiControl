@@ -18,6 +18,16 @@ class ProjectorAccessibilityService : AccessibilityService() {
         var instance: ProjectorAccessibilityService? = null
     }
 
+    private var lastGestureEnd = 0L
+
+    private fun canGesture(): Boolean {
+        if (Build.VERSION.SDK_INT > Build.VERSION_CODES.P) return true
+        val now = System.currentTimeMillis()
+        if (now < lastGestureEnd) return false
+        lastGestureEnd = now + 200
+        return true
+    }
+
     override fun onServiceConnected() {
         super.onServiceConnected()
         instance = this
@@ -50,11 +60,12 @@ class ProjectorAccessibilityService : AccessibilityService() {
     }
 
     fun injectClick(x: Float, y: Float) {
+        if (!canGesture()) return
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
                 val path = Path()
                 path.moveTo(x, y)
-                path.lineTo(x, y)  // ≥2 points required by GestureDescription
+                path.lineTo(x, y)
                 val stroke = GestureDescription.StrokeDescription(path, 0, 120)
                 val gesture = GestureDescription.Builder()
                     .addStroke(stroke)
@@ -67,18 +78,39 @@ class ProjectorAccessibilityService : AccessibilityService() {
     }
 
     fun injectScroll(x: Float, y: Float, dx: Float, dy: Float) {
+        if (!canGesture()) return
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-                val path = Path()
-                val sx = dx * 8
-                val sy = dy * 8
-                path.moveTo(x, y)
-                path.lineTo(x + sx, y + sy)
-                val stroke = GestureDescription.StrokeDescription(path, 0, 50)
-                val gesture = GestureDescription.Builder()
-                    .addStroke(stroke)
-                    .build()
-                dispatchGesture(gesture, null, null)
+                if (Build.VERSION.SDK_INT > Build.VERSION_CODES.P) {
+                    val s = SettingsManager.get()
+                    val duration = s.scrollInterval.coerceIn(0, 200).toLong().coerceAtLeast(1)
+                    val sx = dx * 8
+                    val sy = dy * 8
+                    CursorOverlayService.instance?.showSwipePath(x, y, x + sx, y + sy, duration)
+                    val path = Path()
+                    path.moveTo(x, y)
+                    path.lineTo(x + sx, y + sy)
+                    val stroke = GestureDescription.StrokeDescription(path, 0, duration)
+                    val gesture = GestureDescription.Builder()
+                        .addStroke(stroke)
+                        .build()
+                    dispatchGesture(gesture, null, null)
+                } else {
+                    CursorOverlayService.instance?.moveCursor(x, y)
+                    val s = SettingsManager.get()
+                    val duration = s.scrollInterval.coerceIn(0, 200).toLong().coerceAtLeast(1)
+                    val sx = dx
+                    val sy = (dy * 1.5f).toInt()
+                    CursorOverlayService.instance?.showSwipePath(x, y, x + sx, y + sy, duration)
+                    val path = Path()
+                    path.moveTo(x, y)
+                    path.lineTo(x + sx, y + sy)
+                    val stroke = GestureDescription.StrokeDescription(path, 0, duration)
+                    val gesture = GestureDescription.Builder()
+                        .addStroke(stroke)
+                        .build()
+                    dispatchGesture(gesture, null, null)
+                }
             }
         } catch (e: Exception) {
             android.util.Log.e("LumiControl", "injectScroll failed", e)
@@ -121,6 +153,7 @@ class ProjectorAccessibilityService : AccessibilityService() {
     @Suppress("DEPRECATION")
     private fun dispatchDpadGesture(keyCode: Int) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N) return
+        if (!canGesture()) return
         val metrics = resources.displayMetrics
         val cx = metrics.widthPixels / 2f
         val cy = metrics.heightPixels / 2f
@@ -174,11 +207,8 @@ class ProjectorAccessibilityService : AccessibilityService() {
     }
 
     fun injectText(text: String): Boolean {
-        // Always copy to clipboard first (even if other methods fail)
         copyToClipboard(text)
-        // Method 1: ACTION_SET_TEXT on focused/editable node
         if (trySetText(text)) return true
-        // Method 2: clipboard + ACTION_PASTE
         return tryPasteFromClipboard()
     }
 

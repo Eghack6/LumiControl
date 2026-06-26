@@ -207,12 +207,18 @@ main {
   bottom: 0;
   left: 0;
   right: 0;
-  height: 88px;
+  height: 170px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 20px;
+  padding: 0 24px;
   z-index: 10;
+  pointer-events: none;
+  transition: opacity 0.15s ease;
+}
+
+.touchpad-bottom.hidden {
+  opacity: 0;
   pointer-events: none;
 }
 
@@ -252,8 +258,8 @@ main {
 }
 
 .joystick {
-  width: 56px;
-  height: 56px;
+  width: 150px;
+  height: 150px;
   border-radius: 50%;
   background: rgba(255,255,255,0.08);
   border: 1px solid rgba(255,255,255,0.15);
@@ -265,8 +271,8 @@ main {
 }
 
 .joystick-knob {
-  width: 24px;
-  height: 24px;
+  width: 48px;
+  height: 48px;
   border-radius: 50%;
   background: rgba(255,255,255,0.3);
   transition: background 0.15s;
@@ -603,6 +609,13 @@ main {
   color: var(--text);
   flex-shrink: 0;
   width: 72px;
+}
+
+.setting-hint {
+  font-size: 11px;
+  color: var(--text2);
+  padding: 2px 0 6px 72px;
+  line-height: 1.4;
 }
 
 /* color picker */

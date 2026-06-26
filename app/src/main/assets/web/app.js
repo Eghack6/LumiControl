@@ -131,7 +131,7 @@ function renderSettings(container, s) {
 
   container.innerHTML = `
     <div class="settings-group">
-      <div class="settings-label">光标外观</div>
+      <div class="settings-label">光标</div>
 
       <div class="setting-row">
         <span class="setting-name">颜色</span>
@@ -189,7 +189,7 @@ function renderSettings(container, s) {
     </div>
 
     <div class="settings-group">
-      <div class="settings-label">触控板</div>
+      <div class="settings-label">触控</div>
 
       <div class="setting-row">
         <span class="setting-name">灵敏度</span>
@@ -214,17 +214,37 @@ function renderSettings(container, s) {
           <option value="inverted"${s.scrollDirection === 'inverted' ? ' selected' : ''}>反向</option>
         </select>
       </div>
+    </div>
+
+    <div class="settings-group">
+      <div class="settings-label">摇杆</div>
 
       <div class="setting-row">
-        <span class="setting-name">摇杆速度</span>
+        <span class="setting-name">速度</span>
         <div class="setting-with-value">
-          <input type="range" class="setting-range" id="s-autoscroll-speed" min="1" max="10" step="1" value="${s.autoScrollSpeed || 5}">
+           <input type="range" class="setting-range" id="s-autoscroll-speed" min="1" max="20" step="1" value="${s.autoScrollSpeed || 5}">
           <span class="setting-val" id="s-autoscroll-speed-val">${s.autoScrollSpeed || 5}</span>
         </div>
       </div>
 
       <div class="setting-row">
-        <span class="setting-name">摇杆垂直反向</span>
+        <span class="setting-name">间隔</span>
+        <div class="setting-with-value">
+          <input type="range" class="setting-range" id="s-scroll-interval" min="0" max="200" step="1" value="${s.scrollInterval || 150}">
+          <span class="setting-val" id="s-scroll-interval-val">${s.scrollInterval || 150}ms</span>
+        </div>
+      </div>
+
+      <div class="setting-row">
+        <span class="setting-name">滑动距离</span>
+        <div class="setting-with-value">
+          <input type="range" class="setting-range" id="s-scroll-dist" min="1" max="50" step="1" value="${s.scrollDistance || 25}">
+          <span class="setting-val" id="s-scroll-dist-val">${s.scrollDistance || 25}</span>
+        </div>
+      </div>
+
+      <div class="setting-row">
+        <span class="setting-name">垂直反向</span>
         <label class="toggle">
           <input type="checkbox" id="s-invert-v"${s.invertVertical ? ' checked' : ''}>
           <span class="toggle-track"></span>
@@ -232,12 +252,25 @@ function renderSettings(container, s) {
       </div>
 
       <div class="setting-row">
-        <span class="setting-name">摇杆水平反向</span>
+        <span class="setting-name">水平反向</span>
         <label class="toggle">
           <input type="checkbox" id="s-invert-h"${s.invertHorizontal ? ' checked' : ''}>
           <span class="toggle-track"></span>
         </label>
       </div>
+    </div>
+
+    <div class="settings-group">
+      <div class="settings-label">调试</div>
+
+      <div class="setting-row">
+        <span class="setting-name">显示滑动轨迹</span>
+        <label class="toggle">
+          <input type="checkbox" id="s-trajectory"${s.showTrajectory ? ' checked' : ''}>
+          <span class="toggle-track"></span>
+        </label>
+      </div>
+      <div class="setting-hint">开启后在投影仪屏幕上显示每次滑动的方向箭头，帮助调试参数</div>
     </div>
 
     <div class="settings-group">
@@ -279,6 +312,9 @@ function renderSettings(container, s) {
   bindSetting('s-autoscroll-speed', 'autoScrollSpeed', (el) => parseInt(el.value), (el, v) => { document.getElementById('s-autoscroll-speed-val').textContent = v; });
   bindSetting('s-invert-v', 'invertVertical', (el) => el.checked);
   bindSetting('s-invert-h', 'invertHorizontal', (el) => el.checked);
+  bindSetting('s-scroll-interval', 'scrollInterval', (el) => parseInt(el.value), (el, v) => { document.getElementById('s-scroll-interval-val').textContent = v + 'ms'; });
+  bindSetting('s-scroll-dist', 'scrollDistance', (el) => parseInt(el.value), (el, v) => { document.getElementById('s-scroll-dist-val').textContent = v; });
+  bindSetting('s-trajectory', 'showTrajectory', (el) => el.checked);
 
   // Shape radios
   document.querySelectorAll('#s-shape input').forEach(r => {
@@ -372,6 +408,7 @@ let touchStartX = 0, touchStartY = 0;
 let isButtonTouch = false;
 let touchMoved = false;
 let cursorVisible = false;
+let cursorInitialized = false;
 
 function showLocalCursor(clientX, clientY) {
   if (!cursorVisible) {
@@ -388,6 +425,7 @@ touchpad.addEventListener('touchstart', (e) => {
   }
   isButtonTouch = false;
   touchMoved = false;
+  document.querySelector('.touchpad-bottom')?.classList.add('hidden');
   const t = e.touches[0];
   const rect = touchpad.getBoundingClientRect();
   lastTouchX = t.clientX - rect.left;
@@ -416,6 +454,7 @@ touchpad.addEventListener('touchmove', (e) => {
 });
 
 touchpad.addEventListener('touchend', () => {
+  document.querySelector('.touchpad-bottom')?.classList.remove('hidden');
   cursor.style.display = 'none';
   cursorVisible = false;
   if (isButtonTouch || touchMoved) return;
@@ -426,7 +465,7 @@ touchpad.addEventListener('touchend', () => {
   }
 });
 
-touchpad.addEventListener('touchcancel', () => { cursor.style.display = 'none'; cursorVisible = false; });
+touchpad.addEventListener('touchcancel', () => { document.querySelector('.touchpad-bottom')?.classList.remove('hidden'); cursor.style.display = 'none'; cursorVisible = false; });
 
 // Mouse tap-to-click on touchpad
 let mouseDown = false;
@@ -434,6 +473,7 @@ touchpad.addEventListener('mousedown', (e) => {
   if (e.target.closest('button')) return;
   mouseDown = true;
   touchMoved = false;
+  document.querySelector('.touchpad-bottom')?.classList.add('hidden');
   const rect = touchpad.getBoundingClientRect();
   lastTouchX = e.clientX - rect.left;
   lastTouchY = e.clientY - rect.top;
@@ -458,6 +498,7 @@ touchpad.addEventListener('mousemove', (e) => {
 });
 
 touchpad.addEventListener('mouseup', (e) => {
+  document.querySelector('.touchpad-bottom')?.classList.remove('hidden');
   if (e.target.closest('button')) return;
   if (mouseDown && !touchMoved) {
     const tapEnabled = cachedSettings ? cachedSettings.tapToClick : true;
@@ -471,15 +512,15 @@ touchpad.addEventListener('mouseup', (e) => {
 
 touchpad.addEventListener('mouseleave', () => { mouseDown = false; });
 
-// ---- Joystick ----
+// ---- Joystick (simulate mouse wheel scrolling) ----
 const joystick = document.getElementById('joystick');
 const joystickKnob = document.getElementById('joystickKnob');
 let joystickScrollTimer = null;
-let joystickDir = { dx: 0, dy: 0 };
+let joystickScrollDir = { dx: 0, dy: 0 };
 
 if (joystick && joystickKnob) {
-  const R = 28;
-  const DEAD = 10;
+  const R = 75;
+  const DEAD = 28;
 
   function handleJoystick(clientX, clientY) {
     const rect = joystick.getBoundingClientRect();
@@ -493,42 +534,48 @@ if (joystick && joystickKnob) {
     joystickKnob.style.transform = `translate(${knobX}px, ${knobY}px)`;
 
     if (dist < DEAD) {
-      joystickDir.dx = 0;
-      joystickDir.dy = 0;
+      joystickScrollDir.dx = 0;
+      joystickScrollDir.dy = 0;
       joystick.classList.remove('active');
       return;
     }
     joystick.classList.add('active');
-    const speed = (cachedSettings && cachedSettings.autoScrollSpeed) || 5;
-    const amount = 2 * speed;
+      const distSetting = (cachedSettings && cachedSettings.scrollDistance) || 5;
+      const amount = Math.round(2 * distSetting * (clampDist / R));
+    const ih = cachedSettings ? cachedSettings.invertHorizontal : false;
+    const iv = cachedSettings ? cachedSettings.invertVertical : false;
     if (Math.abs(cx) > Math.abs(cy)) {
-      joystickDir.dx = cx > 0 ? amount : -amount;
-      joystickDir.dy = 0;
+      const raw = cx > 0 ? amount : -amount;
+      joystickScrollDir.dx = ih ? -raw : raw;
+      joystickScrollDir.dy = 0;
       joystickKnob.style.transform = `translate(${cx > 0 ? clampDist : -clampDist}px, 0)`;
     } else {
-      joystickDir.dx = 0;
-      joystickDir.dy = cy > 0 ? amount : -amount;
+      const raw = cy > 0 ? amount : -amount;
+      joystickScrollDir.dx = 0;
+      joystickScrollDir.dy = iv ? -raw : raw;
       joystickKnob.style.transform = `translate(0, ${cy > 0 ? clampDist : -clampDist}px)`;
     }
   }
 
   function startJoystickScroll() {
     if (joystickScrollTimer) return;
+    const baseInterval = (cachedSettings && cachedSettings.scrollInterval) || 150;
+    const speedVal = (cachedSettings && cachedSettings.autoScrollSpeed) || 5;
+    const interval = Math.max(1, Math.round(baseInterval * 5 / speedVal));
+    if (joystickScrollDir.dx !== 0 || joystickScrollDir.dy !== 0) {
+      wsSend({ type: 'scroll', x: cursorX, y: cursorY, dx: joystickScrollDir.dx, dy: joystickScrollDir.dy });
+    }
     joystickScrollTimer = setInterval(() => {
-      if (joystickDir.dx !== 0 || joystickDir.dy !== 0) {
-        const iv = cachedSettings ? cachedSettings.invertVertical : false;
-        const ih = cachedSettings ? cachedSettings.invertHorizontal : false;
-        const fdx = ih ? -joystickDir.dx : joystickDir.dx;
-        const fdy = iv ? -joystickDir.dy : joystickDir.dy;
-        wsSend({ type: 'scroll', x: cursorX, y: cursorY, dx: fdx, dy: fdy });
+      if (joystickScrollDir.dx !== 0 || joystickScrollDir.dy !== 0) {
+        wsSend({ type: 'scroll', x: cursorX, y: cursorY, dx: joystickScrollDir.dx, dy: joystickScrollDir.dy });
       }
-    }, 100);
+    }, interval);
   }
 
   function stopJoystick() {
     if (joystickScrollTimer) { clearInterval(joystickScrollTimer); joystickScrollTimer = null; }
-    joystickDir.dx = 0;
-    joystickDir.dy = 0;
+    joystickScrollDir.dx = 0;
+    joystickScrollDir.dy = 0;
     joystick.classList.remove('active');
     joystickKnob.style.transform = 'translate(0,0)';
   }
@@ -536,8 +583,8 @@ if (joystick && joystickKnob) {
   joystick.addEventListener('touchstart', (e) => {
     e.preventDefault();
     e.stopPropagation();
-    startJoystickScroll();
     handleJoystick(e.touches[0].clientX, e.touches[0].clientY);
+    startJoystickScroll();
   });
 
   joystick.addEventListener('touchmove', (e) => {
@@ -552,8 +599,8 @@ if (joystick && joystickKnob) {
   joystick.addEventListener('mousedown', (e) => {
     e.preventDefault();
     e.stopPropagation();
-    startJoystickScroll();
     handleJoystick(e.clientX, e.clientY);
+    startJoystickScroll();
     const onMove = (ev) => handleJoystick(ev.clientX, ev.clientY);
     const onUp = () => { stopJoystick(); document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp); };
     document.addEventListener('mousemove', onMove);
@@ -597,9 +644,10 @@ function pollStatus() {
       if (s.accessibility) {
         dot.classList.add('ok');
         label.textContent = '已连接';
-        if (s.screenW && s.screenH) {
+        if (!cursorInitialized && s.screenW && s.screenH) {
           cursorX = s.screenW / 2;
           cursorY = s.screenH / 2;
+          cursorInitialized = true;
         }
       } else {
         dot.classList.add('warn');
